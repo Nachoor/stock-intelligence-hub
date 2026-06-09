@@ -9,8 +9,13 @@ import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 from pathlib import Path
+import ast
 import base64
+import html
+import json
+import os
 import re
+import requests
 import unicodedata
 
 # ─────────────────────────────────────────────────────────────
@@ -1543,9 +1548,247 @@ def _responder(q: str, df: pd.DataFrame) -> str:
         "- *Dame un resumen del stock actual*"
     )
 
+def _secret(name: str) -> str:
+    value = os.getenv(name)
+    if value:
+        return value
+    try:
+        return st.secrets.get(name, "")
+    except Exception:
+        return ""
+
+def _llm_provider():
+    providers = [
+        ("groq", "GROQ_API_KEY", os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")),
+        ("gemini", "GOOGLE_API_KEY", os.getenv("GEMINI_MODEL", "gemini-1.5-flash")),
+        ("anthropic", "ANTHROPIC_API_KEY", os.getenv("ANTHROPIC_MODEL", "claude-3-haiku-20240307")),
+        ("openai", "OPENAI_API_KEY", os.getenv("OPENAI_MODEL", "gpt-4o-mini")),
+    ]
+    for provider, key_name, model in providers:
+        key = _secret(key_name)
+        if key:
+            return {"provider": provider, "key": key, "model": model}
+    return None
+
+def _chat_context(df: pd.DataFrame) -> str:
+    context_cols = [c for c in [
+        "Marca", "Mercado", "Modelo_norm", "Versión", "Año", "Fecha Publicacion",
+        "Fuel_type", "Carrocería", "PVP", "Cuota_mes", "TAE",
+        "Concesionario", "Ciudad", "Provincia", "URL",
+    ] if c in df.columns]
+    slim = df[context_cols].copy()
+    numeric = {}
+    for col in ["PVP", "Cuota_mes", "TAE", "Año"]:
+        if col in slim.columns:
+            s = pd.to_numeric(slim[col], errors="coerce").dropna()
+            if not s.empty:
+                numeric[col] = {
+                    "count": int(s.count()),
+                    "mean": round(float(s.mean()), 2),
+                    "min": round(float(s.min()), 2),
+                    "max": round(float(s.max()), 2),
+                }
+    top_values = {}
+    for col in ["Marca", "Modelo_norm", "Versión", "Fuel_type", "Carrocería", "Concesionario", "Ciudad", "Provincia"]:
+        if col in slim.columns and slim[col].notna().any():
+            top_values[col] = slim[col].astype(str).value_counts().head(12).to_dict()
+    sample = slim.head(10).fillna("").to_dict(orient="records")
+    payload = {
+        "filas_filtradas": int(len(df)),
+        "columnas_disponibles": context_cols,
+        "estadisticas_numericas": numeric,
+        "top_valores": top_values,
+        "muestra_10_filas": sample,
+    }
+    return json.dumps(payload, ensure_ascii=False, default=str)
+
+_ALLOWED_PANDAS_ATTRS = {
+    "agg", "all", "any", "astype", "between", "columns", "copy", "count", "describe",
+    "drop_duplicates", "dropna", "dt", "fillna", "groupby", "head", "idxmax", "idxmin",
+    "iloc", "index", "isin", "isna", "notna", "loc", "max", "mean", "median", "min",
+    "mode", "nlargest", "nsmallest", "nunique", "reset_index", "round",
+    "shape", "size", "sort_index", "sort_values", "str", "sum", "tail", "to_dict",
+    "to_datetime", "to_frame", "to_list", "to_string", "unique", "value_counts", "values",
+    "contains", "endswith", "lower", "replace", "startswith", "strip", "upper",
+}
+_ALLOWED_CALL_NAMES = {"len", "int", "float", "str", "round"}
+
+def _validate_pandas_expr(expr: str):
+    if len(expr) > 1200 or "\n" in expr or ";" in expr:
+        raise ValueError("La expresión debe ser de una sola línea.")
+    tree = ast.parse(expr, mode="eval")
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.Expression, ast.Load, ast.Constant, ast.Name, ast.Attribute,
+                             ast.Subscript, ast.Slice, ast.Tuple, ast.List, ast.Dict, ast.Set,
+                             ast.Call, ast.keyword, ast.Compare, ast.BoolOp, ast.BinOp, ast.UnaryOp,
+                             ast.And, ast.Or, ast.Not, ast.Eq, ast.NotEq, ast.Lt, ast.LtE, ast.Gt,
+                             ast.GtE, ast.In, ast.NotIn, ast.Is, ast.IsNot, ast.Add, ast.Sub,
+                             ast.Mult, ast.Div, ast.Mod, ast.BitAnd, ast.BitOr, ast.Invert,
+                             ast.USub, ast.UAdd)):
+            continue
+        raise ValueError(f"Operación no permitida: {type(node).__name__}")
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Name) and node.id not in {"df", "pd", "np", "True", "False", "None", *_ALLOWED_CALL_NAMES}:
+            raise ValueError(f"Nombre no permitido: {node.id}")
+        if isinstance(node, ast.Attribute):
+            if node.attr.startswith("_") or node.attr not in _ALLOWED_PANDAS_ATTRS:
+                raise ValueError(f"Atributo no permitido: {node.attr}")
+        if isinstance(node, ast.Call):
+            func = node.func
+            if isinstance(func, ast.Name) and func.id not in _ALLOWED_CALL_NAMES:
+                raise ValueError(f"Función no permitida: {func.id}")
+            if isinstance(func, ast.Attribute) and func.attr not in _ALLOWED_PANDAS_ATTRS:
+                raise ValueError(f"Método no permitido: {func.attr}")
+    return tree
+
+def _safe_pandas_eval(expr: str, df: pd.DataFrame):
+    tree = _validate_pandas_expr(expr)
+    safe_df = df.copy()
+    return eval(compile(tree, "<llm-pandas>", "eval"), {"__builtins__": {}}, {
+        "df": safe_df,
+        "pd": pd,
+        "np": np,
+        "len": len,
+        "int": int,
+        "float": float,
+        "str": str,
+        "round": round,
+    })
+
+def _format_calc_result(result) -> str:
+    if isinstance(result, pd.DataFrame):
+        if result.empty:
+            return "DataFrame vacío."
+        return result.head(30).to_string(index=False)
+    if isinstance(result, pd.Series):
+        if result.empty:
+            return "Serie vacía."
+        return result.head(30).to_string()
+    if isinstance(result, (dict, list, tuple, set)):
+        return json.dumps(result, ensure_ascii=False, default=str, indent=2)
+    return str(result)
+
+def _llm_http_call(provider_cfg, messages, system_prompt=None, temperature=0.1, max_tokens=900):
+    provider = provider_cfg["provider"]
+    key = provider_cfg["key"]
+    model = provider_cfg["model"]
+    timeout = 35
+
+    if provider in {"groq", "openai"}:
+        base_url = "https://api.groq.com/openai/v1" if provider == "groq" else "https://api.openai.com/v1"
+        payload_messages = []
+        if system_prompt:
+            payload_messages.append({"role": "system", "content": system_prompt})
+        payload_messages.extend(messages)
+        r = requests.post(
+            f"{base_url}/chat/completions",
+            headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
+            json={"model": model, "messages": payload_messages, "temperature": temperature, "max_tokens": max_tokens},
+            timeout=timeout,
+        )
+        r.raise_for_status()
+        return r.json()["choices"][0]["message"]["content"]
+
+    if provider == "gemini":
+        prompt = ""
+        if system_prompt:
+            prompt += system_prompt + "\n\n"
+        prompt += "\n\n".join(m["content"] for m in messages)
+        r = requests.post(
+            f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={key}",
+            headers={"Content-Type": "application/json"},
+            json={
+                "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+                "generationConfig": {"temperature": temperature, "maxOutputTokens": max_tokens},
+            },
+            timeout=timeout,
+        )
+        r.raise_for_status()
+        return r.json()["candidates"][0]["content"]["parts"][0]["text"]
+
+    if provider == "anthropic":
+        r = requests.post(
+            "https://api.anthropic.com/v1/messages",
+            headers={"x-api-key": key, "anthropic-version": "2023-06-01", "Content-Type": "application/json"},
+            json={"model": model, "system": system_prompt or "", "messages": messages, "temperature": temperature, "max_tokens": max_tokens},
+            timeout=timeout,
+        )
+        r.raise_for_status()
+        return "".join(block.get("text", "") for block in r.json().get("content", []))
+
+    raise ValueError("Proveedor LLM no soportado.")
+
+def _extract_llm_json(text: str) -> dict:
+    cleaned = text.strip()
+    cleaned = re.sub(r"^```(?:json)?|```$", "", cleaned, flags=re.I | re.M).strip()
+    try:
+        return json.loads(cleaned)
+    except Exception:
+        start, end = cleaned.find("{"), cleaned.rfind("}")
+        if start >= 0 and end > start:
+            return json.loads(cleaned[start:end + 1])
+    return {"answer": cleaned, "pandas": None}
+
+def _llm_responder(q: str, df: pd.DataFrame) -> str:
+    provider_cfg = _llm_provider()
+    if not provider_cfg:
+        return _responder(q, df)
+
+    system_prompt = (
+        "Eres un analista senior de stock de vehículos BMW, Audi y Mercedes. "
+        "Responde siempre en español. Usa solo los datos proporcionados y no inventes cifras. "
+        "Si necesitas un cálculo exacto, devuelve una expresión pandas de solo lectura sobre el DataFrame df. "
+        "Devuelve siempre JSON válido con estas claves: answer y pandas. "
+        "pandas debe ser null o una expresión de una sola línea, sin imports, sin asignaciones, sin escribir archivos. "
+        "Usa nombres de columnas exactamente como aparecen."
+    )
+    user_prompt = (
+        "Contexto del dataframe filtrado activo:\n"
+        f"{_chat_context(df)}\n\n"
+        "Pregunta del usuario:\n"
+        f"{q}\n\n"
+        "Formato obligatorio:\n"
+        '{"answer":"respuesta breve o explicación de qué vas a calcular","pandas":null}'
+    )
+
+    try:
+        raw = _llm_http_call(provider_cfg, [{"role": "user", "content": user_prompt}], system_prompt=system_prompt)
+        plan = _extract_llm_json(raw)
+        answer = str(plan.get("answer") or "").strip()
+        expr = plan.get("pandas")
+        if not expr:
+            return answer or raw
+
+        result = _safe_pandas_eval(str(expr), df)
+        result_text = _format_calc_result(result)
+        final_prompt = (
+            "Pregunta original:\n"
+            f"{q}\n\n"
+            "Resultado calculado con pandas sobre el dataframe real filtrado:\n"
+            f"{result_text}\n\n"
+            "Redacta una respuesta final breve en español. No añadas datos que no estén en el resultado."
+        )
+        final_system = (
+            "Eres un analista senior de stock de vehículos. "
+            "Responde en español, de forma directa, usando solo el resultado calculado. "
+            "No devuelvas JSON ni código."
+        )
+        try:
+            return _llm_http_call(provider_cfg, [{"role": "user", "content": final_prompt}], system_prompt=final_system, max_tokens=700)
+        except Exception:
+            return f"{answer}\n\n**Resultado calculado:**\n\n{result_text}"
+    except Exception as exc:
+        fallback = _responder(q, df)
+        return f"{fallback}\n\n_Nota: el LLM no ha respondido correctamente ({type(exc).__name__}). He usado el asistente local._"
+
+def _chat_text_to_html(text: str) -> str:
+    safe = html.escape(str(text))
+    safe = re.sub(r"\*\*(.*?)\*\*", r"<strong>\1</strong>", safe)
+    safe = safe.replace("\n", "<br>")
+    return safe
+
 
 def show_chatbot(df):
-    import re as _re
     if "chat_msgs" not in st.session_state:
         st.session_state.chat_msgs = [
             {"role": "bot", "text":
@@ -1556,11 +1799,9 @@ def show_chatbot(df):
     chat_html = '<div class="chat-container">'
     for msg in st.session_state.chat_msgs:
         if msg["role"] == "user":
-            chat_html += f'<div class="msg-user"><span>{msg["text"]}</span></div>'
+            chat_html += f'<div class="msg-user"><span>{_chat_text_to_html(msg["text"])}</span></div>'
         else:
-            text = _re.sub(r'\*\*(.*?)\*\*', r'<strong>\1</strong>', msg["text"])
-            text = text.replace("\n", "<br>")
-            chat_html += f'<div class="msg-bot"><span>{text}</span></div>'
+            chat_html += f'<div class="msg-bot"><span>{_chat_text_to_html(msg["text"])}</span></div>'
     chat_html += "</div>"
     st.markdown(chat_html, unsafe_allow_html=True)
 
@@ -1574,7 +1815,7 @@ def show_chatbot(df):
 
     if send and user_input.strip():
         st.session_state.chat_msgs.append({"role": "user", "text": user_input})
-        resp = _responder(user_input, df)
+        resp = _llm_responder(user_input, df)
         st.session_state.chat_msgs.append({"role": "bot", "text": resp})
         st.rerun()
 
@@ -1590,7 +1831,7 @@ def show_chatbot(df):
     for col, sug in zip(cols, sugs):
         if col.button(sug, key=f"sug_{sug[:12]}", width="stretch"):
             st.session_state.chat_msgs.append({"role": "user", "text": sug})
-            resp = _responder(sug, df)
+            resp = _llm_responder(sug, df)
             st.session_state.chat_msgs.append({"role": "bot", "text": resp})
             st.rerun()
 

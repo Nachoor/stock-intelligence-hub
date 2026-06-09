@@ -261,6 +261,7 @@ BASE = Path(__file__).parent
 COLORS = {
     "BMW": "#1c69d4",
     "Audi": "#bb0a14",
+    "Mercedes": "#6b7271",
     "Mercedes-Benz": "#6b7271",
 }
 FUEL_COLORS = {
@@ -323,7 +324,18 @@ _AUDI_MODEL_PREFIXES = [
 def _norm_key(value):
     s = unicodedata.normalize("NFD", str(value or ""))
     s = "".join(c for c in s if unicodedata.category(c) != "Mn")
+    s = re.sub(r"[^0-9A-Za-z]+", " ", s)
     return re.sub(r"\s+", " ", s).strip().lower()
+
+def normalize_brand_name(value):
+    key = _norm_key(value)
+    if key in {"mercedes", "mercedes benz", "mercedes-benz"}:
+        return "Mercedes"
+    if key == "bmw":
+        return "BMW"
+    if key == "audi":
+        return "Audi"
+    return re.sub(r"\s+", " ", str(value or "")).strip()
 
 def clean_model_name(value, brand=""):
     model = re.sub(r"\s+", " ", str(value or "")).strip()
@@ -331,6 +343,8 @@ def clean_model_name(value, brand=""):
         return ""
     model = _BRAND_PREFIX.sub("", model).strip()
     key = _norm_key(model)
+    version_key = key
+    brand = normalize_brand_name(brand)
 
     bm = _BMW_SERIES_KEY_RE.match(key)
     if bm:
@@ -338,7 +352,10 @@ def clean_model_name(value, brand=""):
     if brand == "BMW":
         bmw = re.match(r"^(i?x[1-7]|m[1-8])\b", key, re.IGNORECASE)
         if bmw:
-            return bmw.group(1).upper()
+            code = bmw.group(1)
+            if code.lower().startswith("m"):
+                return f"Serie {code[-1]}"
+            return "i" + code[1:].upper() if code.lower().startswith("ix") else code.upper()
 
     mc = _MERCEDES_CLASS_RE.match(key)
     if mc:
@@ -346,19 +363,67 @@ def clean_model_name(value, brand=""):
         return _MERCEDES_CLASS_MAP.get(code, f"Clase {code.upper()}")
     if key in _MERCEDES_CLASS_MAP:
         return _MERCEDES_CLASS_MAP[key]
-    if brand == "Mercedes-Benz":
+    if brand == "Mercedes":
+        if "amg gt" in key:
+            return "AMG GT"
+        if "mercedes amg a" in key:
+            return "Clase A"
+        if "mercedes amg c" in key:
+            return "Clase C"
+        if "mercedes amg e" in key or re.match(r"^e\d", key):
+            return "Clase E"
+        if "mercedes amg g " in f"{key} ":
+            return "Clase G"
+        if "glc" in key and ("coupe" in key or "coup" in key):
+            return "Clase GLC Coupe"
+        if "gle" in key and ("coupe" in key or "coup" in key):
+            return "Clase GLE Coupe"
         for code in sorted(_MERCEDES_CLASS_MAP, key=len, reverse=True):
-            if key == code or key.startswith(code + " "):
+            if key == code or key.startswith(code + " ") or re.match(rf"^{code}\d", key):
                 return _MERCEDES_CLASS_MAP[code]
         eq = re.match(r"^(eqa|eqb|eqc|eqe|eqs)\b", key, re.IGNORECASE)
         if eq:
             return eq.group(1).upper()
 
     if brand == "Audi":
+        if "e tron gt" in key or "etron gt" in key:
+            return "e-tron GT"
+        if key.startswith(("rs 3", "rs3", "s3")):
+            return "A3"
+        if key.startswith(("s5", "rs5")):
+            return "A5"
+        if key.startswith("sq5"):
+            return "Q5"
         for prefix in sorted(_AUDI_MODEL_PREFIXES, key=len, reverse=True):
             prefix_key = _norm_key(prefix)
             if key == prefix_key or key.startswith(prefix_key + " "):
+                if prefix.startswith("A1"):
+                    return "A1"
+                if prefix.startswith("A3"):
+                    return "A3"
+                if prefix.startswith("A5"):
+                    return "A5"
+                if prefix.startswith("A6"):
+                    return "A6"
+                if prefix.startswith("Q3 Sportback"):
+                    return "Q3 Sportback"
+                if prefix.startswith("Q3"):
+                    return "Q3"
+                if prefix.startswith("Q4 Sportback"):
+                    return "Q4 Sportback e-tron"
+                if prefix.startswith("Q4"):
+                    return "Q4 e-tron"
+                if prefix.startswith("Q5 Sportback"):
+                    return "Q5 Sportback"
+                if prefix.startswith("Q5"):
+                    return "Q5"
+                if prefix.startswith("Q6 Sportback"):
+                    return "Q6 e-tron Sportback"
+                if prefix.startswith("Q6"):
+                    return "Q6 e-tron"
                 return prefix
+        if "e tron gt" in key or "etron gt" in key:
+            return "e-tron GT"
 
     return model.replace("Série", "Serie")
 
@@ -380,32 +445,42 @@ def clean_body_type(model="", body="", version=""):
         "mercedes-amg gla", "mercedes-amg glc", "mercedes-amg gle", "mercedes-amg gls", "mercedes-amg g",
     )
 
-    if any(x in key for x in ["cabrio", "convertible", "roadster"]):
+    if any(x in key for x in ["roadster"]):
+        return "ROADSTER"
+    if any(x in key for x in ["cabrio", "convertible"]):
         return "CABRIO"
     if any(x in key for x in suv_tokens) or model_key.startswith(suv_prefixes):
-        return "SUV"
+        return "SAV"
+    if any(x in key for x in ["furgon", "furgao", "furgón", "van", "sprinter", "citan", "vito", "marco polo", "chasis cabina"]):
+        return "TRANSPORTER"
     if any(x in key for x in ["avant", "touring", "estate", "familiar", "station", "shooting brake", "allstreet", "wagon", "break"]):
-        return "TOURING"
+        return "ESTATE"
     if any(x in key for x in ["coupe", "coup", "gran turismo", "gran_turismo"]):
         return "COUPE"
     if any(x in key for x in ["sedan", "berlina", "limousine", "saloon"]):
         return "SEDAN"
     if any(x in key for x in ["sportback", "sportshatch", "sports hatch", "sports_hatch", "hatch", "hach", "compact", "5-door", "5 door", "compacto"]):
-        return "HATCH"
+        return "HACH 5P"
 
-    if model_key.startswith(("a1", "a3", "serie 1", "clase a", "clase b")):
-        return "HATCH"
-    if model_key.startswith(("a5 avant", "a6 avant")):
-        return "TOURING"
+    if model_key.startswith(("clase b", "clase v", "eqv", "serie 2")) and any(x in key for x in ["active tourer", "gran tourer", "tourer", "mpv"]):
+        return "MPV"
+    if model_key.startswith(("a1", "a3", "serie 1", "clase a")):
+        return "HACH 5P"
+    if model_key.startswith(("a5 avant", "a6 avant", "i5 touring")):
+        return "ESTATE"
     if model_key.startswith(("a3 limousine", "a5 limousine", "a6", "serie 3", "serie 5", "clase c", "clase e", "clase s", "eqe", "eqs")):
         return "SEDAN"
     if model_key.startswith(("a5", "s e-tron gt", "serie 2", "serie 4", "serie 8", "clase cla", "clase cle", "clase cls", "clase sl")):
         return "COUPE"
+    if model_key.startswith(("q2", "q3", "q4", "q5", "q6", "q7", "q8", "x1", "x2", "x3", "x4", "x5", "x6", "x7", "xm", "ix", "clase g", "clase gla", "clase glb", "clase glc", "clase gle", "clase gls", "eqa", "eqb")):
+        return "SAV"
 
-    return "OTHER"
+    return "SEDAN"
 
 def _post_normalize(df):
     df = df.copy()
+    if "Marca" in df.columns:
+        df["Marca"] = df["Marca"].map(normalize_brand_name)
     if "Modelo" in df.columns:
         if "Marca" in df.columns:
             df["Modelo"] = [clean_model_name(model, brand) for model, brand in zip(df["Modelo"], df["Marca"])]
@@ -1065,7 +1140,7 @@ def tabla_vehiculos(df):
     def brand_pill(marca):
         if marca == "BMW":           return f'<span class="brand-pill pill-bmw">BMW</span>'
         elif marca == "Audi":        return f'<span class="brand-pill pill-audi">Audi</span>'
-        elif marca == "Mercedes-Benz": return f'<span class="brand-pill pill-mb">MB</span>'
+        elif marca in {"Mercedes", "Mercedes-Benz"}: return f'<span class="brand-pill pill-mb">MB</span>'
         return marca
 
     headers = "".join(f"<th>{col_labels.get(c, c)}</th>" for c in display_cols)

@@ -132,6 +132,7 @@ ES_PROVINCES_BY_CITY = {
 def norm_key(value: object) -> str:
     text = unicodedata.normalize("NFD", str(value or ""))
     text = "".join(c for c in text if unicodedata.category(c) != "Mn")
+    text = re.sub(r"[^0-9A-Za-z]+", " ", text)
     return re.sub(r"\s+", " ", text).strip().lower()
 
 
@@ -195,6 +196,97 @@ def normalize_fuel(value: object) -> str:
     return "ICE"
 
 
+def normalize_brand(value: object) -> str:
+    key = norm_key(value)
+    if key in {"mercedes", "mercedes benz", "mercedes-benz"}:
+        return "Mercedes"
+    if key == "bmw":
+        return "BMW"
+    if key == "audi":
+        return "Audi"
+    return clean_text(value)
+
+
+def master_model(value: object, brand: str = "", version: object = "") -> str:
+    model = clean_model(value, "Mercedes-Benz" if normalize_brand(brand) == "Mercedes" else normalize_brand(brand))
+    key = norm_key(model)
+    version_key = norm_key(version)
+    full_key = f"{key} {version_key}".strip()
+    brand = normalize_brand(brand)
+
+    if brand == "Audi":
+        if "etron gt" in full_key or "e tron gt" in full_key:
+            return "e-tron GT"
+        if key.startswith(("rs 3", "rs3", "s3")):
+            return "A3"
+        if key.startswith(("s5", "rs5")):
+            return "A5"
+        if key.startswith(("sq5")):
+            return "Q5"
+        if "q3 sportback" in full_key:
+            return "Q3 Sportback"
+        if "q5 sportback" in full_key:
+            return "Q5 Sportback"
+        if "q6 sportback" in full_key:
+            return "Q6 e-tron Sportback"
+        if "q4 sportback" in full_key:
+            return "Q4 Sportback e-tron"
+        if key.startswith(("q6", "sq6")):
+            return "Q6 e-tron"
+        if key.startswith("q4"):
+            return "Q4 e-tron"
+        for prefix in ["A1", "A3", "A4", "A5", "A6", "A8", "Q2", "Q3", "Q5", "Q7", "Q8", "TT"]:
+            if key.startswith(norm_key(prefix)):
+                return prefix
+
+    if brand == "BMW":
+        if key == "ix3":
+            return "iX3"
+        if key == "ix2":
+            return "iX2"
+        if key == "ix1":
+            return "iX1"
+        if key == "ix":
+            return "iX"
+        m = re.match(r"^m([1-8])\b", key)
+        if m:
+            return f"Serie {m.group(1)}"
+        for prefix in ["Serie 1", "Serie 2", "Serie 3", "Serie 4", "Serie 5", "Serie 7", "Serie 8", "X1", "X2", "X3", "X4", "X5", "X6", "X7", "XM", "Z4", "i4", "i5", "i7"]:
+            if key.startswith(norm_key(prefix)):
+                return prefix
+
+    if brand == "Mercedes":
+        if "amg gt" in full_key:
+            return "AMG GT"
+        if "mercedes amg a" in full_key:
+            return "Clase A"
+        if "mercedes amg c" in full_key:
+            return "Clase C"
+        if "mercedes amg e" in full_key or re.match(r"^e\d", key):
+            return "Clase E"
+        if "mercedes amg g " in f"{full_key} ":
+            return "Clase G"
+        if "glc" in full_key and ("coupe" in full_key or "coupe" in version_key or "coup" in full_key):
+            return "Clase GLC Coupe"
+        if "gle" in full_key and ("coupe" in full_key or "coupe" in version_key or "coup" in full_key):
+            return "Clase GLE Coupe"
+        for code, out in [
+            ("cla", "Clase CLA"), ("cle", "Clase CLE"), ("gla", "Clase GLA"),
+            ("glb", "Clase GLB"), ("glc", "Clase GLC"), ("gle", "Clase GLE"),
+            ("gls", "Clase GLS"), ("eqa", "EQA"), ("eqb", "EQB"),
+            ("eqe", "EQE"), ("eqs", "EQS"), ("eqt", "EQT"), ("eqv", "EQV"),
+        ]:
+            if key == code or key.startswith(code + " ") or version_key.startswith(code + " ") or re.match(rf"^{code}\d", key) or re.match(rf"^{code}\d", version_key) or f" {code} " in f" {full_key} ":
+                return out
+        for prefix in ["Clase A", "Clase B", "Clase C", "Clase E", "Clase G", "Clase S", "Clase SL", "Clase T", "Clase V", "Citan", "Vito", "Marco Polo", "Sprinter 200", "Sprinter 300", "Sprinter 400", "Sprinter 500", "e-Sprinter", "eCitan", "eVito"]:
+            if key.startswith(norm_key(prefix)) or version_key.startswith(norm_key(prefix)):
+                return prefix
+        if re.match(r"^[acegst]\b", version_key):
+            return {"a": "Clase A", "c": "Clase C", "e": "Clase E", "g": "Clase G", "s": "Clase S", "t": "Clase T"}[version_key[0]]
+
+    return model
+
+
 def normalize_body(model: object, body: object = "", version: object = "") -> str:
     model_key = norm_key(model)
     body_key = norm_key(body)
@@ -213,29 +305,37 @@ def normalize_body(model: object, body: object = "", version: object = "") -> st
         "mercedes-amg gla", "mercedes-amg glc", "mercedes-amg gle", "mercedes-amg gls", "mercedes-amg g",
     )
 
-    if any(x in key for x in ["cabrio", "convertible", "roadster"]):
+    if any(x in key for x in ["roadster"]):
+        return "ROADSTER"
+    if any(x in key for x in ["cabrio", "convertible"]):
         return "CABRIO"
     if any(x in key for x in suv_tokens) or model_key.startswith(suv_prefixes):
-        return "SUV"
+        return "SAV"
+    if any(x in key for x in ["furgon", "furgao", "furgón", "van", "sprinter", "citan", "vito", "marco polo", "chasis cabina"]):
+        return "TRANSPORTER"
     if any(x in key for x in ["avant", "touring", "estate", "familiar", "station", "shooting brake", "allstreet", "wagon", "break"]):
-        return "TOURING"
+        return "ESTATE"
     if any(x in key for x in ["coupe", "coup", "gran turismo", "gran_turismo"]):
         return "COUPE"
     if any(x in key for x in ["sedan", "berlina", "limousine", "saloon"]):
         return "SEDAN"
     if any(x in key for x in ["sportback", "sportshatch", "sports hatch", "sports_hatch", "hatch", "hach", "compact", "5-door", "5 door", "compacto"]):
-        return "HATCH"
+        return "HACH 5P"
 
-    if model_key.startswith(("a1", "a3", "serie 1", "clase a", "clase b")):
-        return "HATCH"
-    if model_key.startswith(("a5 avant", "a6 avant")):
-        return "TOURING"
+    if model_key.startswith(("clase b", "clase v", "eqv", "serie 2")) and any(x in key for x in ["active tourer", "gran tourer", "tourer", "mpv"]):
+        return "MPV"
+    if model_key.startswith(("a1", "a3", "serie 1", "clase a")):
+        return "HACH 5P"
+    if model_key.startswith(("a5 avant", "a6 avant", "i5 touring")):
+        return "ESTATE"
     if model_key.startswith(("a3 limousine", "a5 limousine", "a6", "serie 3", "serie 5", "clase c", "clase e", "clase s", "eqe", "eqs")):
         return "SEDAN"
     if model_key.startswith(("a5", "s e-tron gt", "serie 2", "serie 4", "serie 8", "clase cla", "clase cle", "clase cls", "clase sl")):
         return "COUPE"
+    if model_key.startswith(("q2", "q3", "q4", "q5", "q6", "q7", "q8", "x1", "x2", "x3", "x4", "x5", "x6", "x7", "xm", "ix", "clase g", "clase gla", "clase glb", "clase glc", "clase gle", "clase gls", "eqa", "eqb")):
+        return "SAV"
 
-    return "OTHER"
+    return "SEDAN"
 
 
 def to_number(value: object):
@@ -278,11 +378,12 @@ def normalize_rows(path: Path, brand: str, market: str) -> list[dict]:
     rows: list[dict] = []
     for _, row in df.iterrows():
         raw_model = first(row, "Carline", "Model Group", "Modelo_norm", "Model", "Modelo", "model")
-        model = clean_model(raw_model, brand)
+        version = clean_text(first(row, "Version", "Versión", "version"))
+        brand_norm = normalize_brand(brand)
+        model = master_model(raw_model, brand_norm, version)
         if not model:
             continue
 
-        version = clean_text(first(row, "Version", "Versión", "version"))
         body = normalize_body(model, first(row, "Body_Type", "Carrocería", "Carroceria", "Body", "body"), version)
         engine = first(row, "Fuel_Type", "Fuel_type", "Fuel", "Combustible", "Motor/Combustible", "Engine_Raw", "Engine")
         city = clean_text(first(row, "City", "Ciudad", "city"))
@@ -295,7 +396,7 @@ def normalize_rows(path: Path, brand: str, market: str) -> list[dict]:
         rows.append(
             {
                 "Market": market,
-                "Brand": brand,
+                "Brand": brand_norm,
                 "Model": model,
                 "Body_Type": body,
                 "Fuel_Type": normalize_fuel(engine),

@@ -257,6 +257,7 @@ footer { visibility: hidden; }
 # CONSTANTES
 # ─────────────────────────────────────────────────────────────
 BASE = Path(__file__).parent
+DATA_SCHEMA_VERSION = "2026-06-09-master-normalized-model-version"
 
 COLORS = {
     "BMW": "#1c69d4",
@@ -593,6 +594,7 @@ def _norm_pt(df, mercado="PT"):
 
 @st.cache_data(show_spinner="Cargando datos...")
 def load_data():
+    _ = DATA_SCHEMA_VERSION
     # 1. CSV recuperado del GLOBAL (fuente principal — siempre disponible)
     csv_f = BASE / "STOCK_UNIFICADO_GLOBAL.csv"
     if csv_f.exists():
@@ -651,13 +653,16 @@ def sidebar_filters(df):
         st.markdown("### Filtros")
 
         def msel(label, col):
-            opts = sorted(df[col].dropna().unique().tolist()) if col in df.columns else []
+            opts = sorted(
+                x for x in df[col].dropna().astype(str).str.strip().unique().tolist()
+                if x and x.lower() not in {"nan", "none"}
+            ) if col in df.columns else []
             return st.multiselect(label, opts, default=[], key=f"f_{col}")
 
         marcas     = msel("Marca",          "Marca")
         mercados   = msel("Mercado",        "Mercado")
-        modelos    = msel("Modelo",         "Modelo_norm")
-        versiones  = msel("Versión",        "Versión")
+        modelos    = msel("Modelo normalizado", "Modelo_norm")
+        versiones  = msel("Versión / acabado", "Versión")
         fuels      = msel("Combustible",    "Fuel_type")
         carros     = msel("Carrocería",     "Carrocería")
         dealers    = msel("Concesionario",  "Concesionario")

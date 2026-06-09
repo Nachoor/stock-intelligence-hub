@@ -257,7 +257,7 @@ footer { visibility: hidden; }
 # CONSTANTES
 # ─────────────────────────────────────────────────────────────
 BASE = Path(__file__).parent
-DATA_SCHEMA_VERSION = "2026-06-09-master-normalized-model-version-fuel-published-date"
+DATA_SCHEMA_VERSION = "2026-06-09-master-normalized-model-version-fuel-published-date-display"
 
 COLORS = {
     "BMW": "#1c69d4",
@@ -757,6 +757,22 @@ def pct(n, d, dec=1):
 def pct_val(x, dec=1):
     return f"{x:.{dec}f}%".replace(".", ",") if pd.notna(x) and x == x else "—"
 
+def fmt_date(value):
+    if value is None or not pd.notna(value):
+        return "—"
+    text = str(value).strip()
+    if not text or text.lower() in {"nan", "none", "nat"}:
+        return "—"
+    dt = pd.to_datetime(text, errors="coerce")
+    if pd.isna(dt):
+        return text[:10]
+    return dt.strftime("%d/%m/%Y")
+
+def publication_dates(df):
+    if "Fecha Publicacion" not in df.columns:
+        return pd.Series(dtype="datetime64[ns]")
+    return pd.to_datetime(df["Fecha Publicacion"], errors="coerce").dropna()
+
 def show_kpis(df):
     total   = len(df)
     pvp_s   = df["PVP"].dropna()     if "PVP"      in df.columns else pd.Series()
@@ -873,6 +889,31 @@ def charts_stock(df):
                           color_discrete_sequence=["#1c69d4","#0f172a"])
             fig7.update_traces(textinfo="percent+label")
             st.plotly_chart(fig_base(fig7, 280), width="stretch")
+
+    if "Fecha Publicacion" in df.columns:
+        recent = df.copy()
+        recent["_FechaPub_dt"] = pd.to_datetime(recent["Fecha Publicacion"], errors="coerce")
+        recent = recent.dropna(subset=["_FechaPub_dt"]).sort_values("_FechaPub_dt", ascending=False)
+        if not recent.empty:
+            stock_cols = [c for c in [
+                "Marca", "Modelo_norm", "Versión", "Fecha Publicacion",
+                "PVP", "Cuota_mes", "Fuel_type", "Concesionario", "Ciudad", "URL",
+            ] if c in recent.columns]
+            recent = recent[stock_cols].copy()
+            recent["Fecha Publicacion"] = recent["Fecha Publicacion"].map(fmt_date)
+            if "PVP" in recent.columns:
+                recent["PVP"] = recent["PVP"].map(eur)
+            if "Cuota_mes" in recent.columns:
+                recent["Cuota_mes"] = recent["Cuota_mes"].map(eu_mes)
+            recent = recent.rename(columns={
+                "Modelo_norm": "Modelo",
+                "PVP": "Precio",
+                "Cuota_mes": "Cuota/mes",
+                "Fuel_type": "Combustible",
+            })
+            st.markdown('<div class="section-header">Ultimas publicaciones</div>', unsafe_allow_html=True)
+            st.caption(f"{eu_num(len(recent))} vehiculos mas recientes con los filtros actuales")
+            st.dataframe(recent, width="stretch", hide_index=True)
 
 # ─────────────────────────────────────────────────────────────
 # CHARTS — PRECIOS
@@ -1038,11 +1079,13 @@ def comparador(df):
         pvp   = sub["PVP"].dropna()   if "PVP"      in sub.columns else pd.Series()
         cuota = sub["Cuota_mes"].dropna() if "Cuota_mes" in sub.columns else pd.Series()
         tae   = sub["TAE"].dropna()   if "TAE"      in sub.columns else pd.Series()
+        pub   = publication_dates(sub)
         top_fuel  = sub["Fuel_type"].mode()[0]       if "Fuel_type" in sub.columns and not sub["Fuel_type"].isna().all() else "—"
         top_dealer= sub["Concesionario"].value_counts().idxmax() if "Concesionario" in sub.columns and not sub["Concesionario"].isna().all() else "—"
         rows.append({
             "Modelo":             m,
             "Stock total":        eu_num(len(sub)),
+            "Fecha Publicacion":  fmt_date(pub.max()) if len(pub) else "—",
             "Con precio":         eu_num(len(pvp)),
             "Con cuota":          eu_num(len(cuota)),
             "Precio medio (€)":   eur(pvp.mean())   if len(pvp)   else "—",
@@ -1170,6 +1213,8 @@ def tabla_vehiculos(df):
                 cells += f"<td>{f'{v:.2f}%'.replace('.', ',') if pd.notna(v) else '—'}</td>"
             elif c == "Año":
                 cells += f"<td>{int(v) if pd.notna(v) else '—'}</td>"
+            elif c == "Fecha Publicacion":
+                cells += f"<td>{fmt_date(v)}</td>"
             else:
                 cells += f"<td>{v if pd.notna(v) else '—'}</td>"
         rows_html += f"<tr>{cells}</tr>"
@@ -1196,6 +1241,8 @@ def tabla_vehiculos(df):
             df_export[c] = df_export[c].map(lambda x: pct_val(x, 2))
     if "Año" in df_export.columns:
         df_export["Año"] = df_export["Año"].map(lambda x: eu_num(x, 0) if pd.notna(x) else "—")
+    if "Fecha Publicacion" in df_export.columns:
+        df_export["Fecha Publicacion"] = df_export["Fecha Publicacion"].map(fmt_date)
     csv = df_export.to_csv(index=False, sep=";").encode("utf-8-sig")
     st.download_button("Descargar CSV", csv, "stock_filtrado.csv", "text/csv")
 

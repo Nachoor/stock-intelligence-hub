@@ -21,7 +21,7 @@ COLUMNS = [
     "Combustible","Cambio","Potencia","Traccion","Color Ext.","Codigo Color",
     "Color Int.","Tapizado","PVP (EUR)","Etiqueta Precio","Cuota/mes (EUR)",
     "TAE (%)","TIN (%)","Entrada (EUR)","Plazo (meses)","Disponibilidad",
-    "Texto Entrega","Fecha Disponible","Concesionario","Ciudad","ID Dealer",
+    "Texto Entrega","Fecha Disponible","Fecha Publicacion","Concesionario","Ciudad","ID Dealer",
     "Email Dealer","Car ID","Campana","Online","Modelo Negocio","URL Coche",
 ]
 FUEL_MAP = {"GASOLINE":"Gasolina","PETROL":"Gasolina","DIESEL":"Diesel",
@@ -194,6 +194,24 @@ def map_vehicle(hit, pricing_map=None):
             distrib.get("destinationLocationDomesticDealerName"),
         ))
         city = _city_from_dealer(dealer_name)
+    dealer_id = text_value(first_existing(retail.get("buNo"), distrib.get("buNo"), v.get("buNo")))
+    offer_prices = deep_get(v, "offering", "offerPrices", default={})
+    offer_price = {}
+    if isinstance(offer_prices, dict) and offer_prices:
+        offer_price = offer_prices.get(str(dealer_id)) if dealer_id else None
+        if not isinstance(offer_price, dict):
+            offer_price = next((op for op in offer_prices.values() if isinstance(op, dict)), {})
+    fecha_publicacion = first_existing(
+        v.get("publishedDate"),
+        v.get("publicationDate"),
+        v.get("listingDate"),
+        v.get("onlineSince"),
+        deep_get(v, "offering", "publishedDate"),
+        deep_get(v, "offering", "publicationDate"),
+        deep_get(v, "offering", "listingDate"),
+        deep_get(v, "offering", "onlineSince"),
+        offer_price.get("offerPriceCreatedAt") if isinstance(offer_price, dict) else "",
+    )
     # PVP: v.pricing.price.value es el campo verificado para BMW ES
     pvp = normalize_money(first_existing(
         price.get("value"), price.get("amount"), price.get("grossAmount"),
@@ -233,9 +251,10 @@ def map_vehicle(hit, pricing_map=None):
         "Disponibilidad":disponible,
         "Texto Entrega":"Entrega aproximada: " + str(exp_date) if exp_date else "",
         "Fecha Disponible":exp_date or today_str,
+        "Fecha Publicacion":fecha_publicacion,
         "Concesionario":text_value(first_existing(retail.get("locationOutletName"), distrib.get("destinationLocationDomesticDealerName"))),
         "Ciudad":text_value(city),
-        "ID Dealer":text_value(first_existing(retail.get("buNo"), distrib.get("buNo"), v.get("buNo"))),
+        "ID Dealer":dealer_id,
         "Email Dealer":text_value(distrib.get("dealerEmail")),
         "Car ID":text_value(car_id),
         "Campana":"",
@@ -360,6 +379,30 @@ def scrape_bmw():
                             if _p.get("value") or _p.get("amount") or _p.get("grossAmount"):
                                 price_count[0] += 1
                 if hits:
+                    # ── DIAGNÓSTICO: imprimir claves del primer vehículo (solo la primera vez) ──
+                    if os.getenv("BMW_DEBUG_DATE_FIELDS", "0").lower() in ("1", "true", "yes") and len(all_hits) <= len(hits) and hits:
+                        def _flat_keys(obj, prefix="", depth=0):
+                            if not isinstance(obj, dict) or depth > 5: return []
+                            keys = []
+                            for k, v in obj.items():
+                                full = prefix + k if not prefix else prefix + "." + k
+                                keys.append(full)
+                                keys.extend(_flat_keys(v, full, depth+1))
+                            return keys
+                        first_v = hits[0].get("vehicle") or hits[0].get("document") or hits[0].get("data") or hits[0]
+                        all_keys = _flat_keys(hits[0])
+                        date_keys = [k for k in all_keys if any(x in k.lower() for x in
+                                     ["date","since","publish","creat","offer","list","online","launch","avail"])]
+                        print("\n\n   ── CAMPOS DE FECHA EN API BMW ──")
+                        for dk in sorted(set(date_keys)):
+                            # Obtener el valor real
+                            parts = dk.split(".")
+                            val = hits[0]
+                            for p in parts:
+                                val = val.get(p, None) if isinstance(val, dict) else None
+                            print(f"   {dk}: {val}")
+                        print("   ─────────────────────────────────\n")
+                    # ─────────────────────────────────────────────────────────────────────────
                     total = total_count[0] or 1
                     pct  = round(len(all_hits)*100/total)
                     ppct = round(price_count[0]*100/len(all_hits)) if all_hits else 0

@@ -50,25 +50,14 @@ div[data-testid="stToolbar"] { display: none; }
 #MainMenu { visibility: hidden; }
 footer { visibility: hidden; }
 
-/* Header — full viewport width, escapa el contenedor de Streamlit */
+/* Header — ocupa todo el ancho del área de contenido */
 .app-header {
     display: block;
-    width: 100vw;
-    position: relative;
-    left: 50%;
-    right: 50%;
-    margin-left: -50vw;
-    margin-right: -50vw;
-    margin-top: -1rem;
-    margin-bottom: 0;
-}
-
-/* Quitar padding superior del bloque principal para que el header pegue arriba */
-[data-testid="stAppViewBlockContainer"] {
-    padding-top: 0 !important;
-}
-section[data-testid="stMain"] > div:first-child {
-    padding-top: 0 !important;
+    width: calc(100% + 160px);
+    margin-left: -80px;
+    margin-right: -80px;
+    margin-top: -2rem;
+    margin-bottom: 1rem;
 }
 
 /* ── Sidebar ────────────────────────────────── */

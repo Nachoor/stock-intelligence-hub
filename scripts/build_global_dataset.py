@@ -181,14 +181,19 @@ def clean_model(value: object, brand: str = "") -> str:
     return model.replace("Série", "Serie")
 
 
-def normalize_fuel(value: object) -> str:
-    key = norm_key(value)
+def normalize_fuel(*values: object) -> str:
+    key = norm_key(" ".join(clean_text(value) for value in values if clean_text(value)))
     if not key:
         return ""
-    if any(x in key for x in ["electric", "electrico", "elctrico", "bev", "e-tron"]) and "hybrid" not in key and "hibrid" not in key:
-        return "BEV"
-    if any(x in key for x in ["plug", "phev", "hibrido enchufable", "hybrid plug", "tfsi e", "e-hybrid"]):
+    if any(x in key for x in [
+        "plug", "phev", "hibrido enchufable", "hybrid plug", "tfsi e", "tfsie",
+        "e hybrid", "ehybrid", "e hybrid", "e hibrid", "300 de", "300 e",
+        "350 de", "400 e", "450 e", "500 e", "550 e", "580 e", "250 e",
+        "45 tfsie", "50 tfsie", "55 tfsie", "60 tfsie",
+    ]):
         return "PHEV"
+    if any(x in key for x in ["electric", "electrico", "eletrico", "elctrico", "bev", "e tron", "etron"]):
+        return "BEV"
     if "mhev" in key or "mild" in key or "hibrido suave" in key:
         return "ICE"
     if "hybrid" in key or "hibrid" in key or "hev" in key:
@@ -399,7 +404,7 @@ def normalize_rows(path: Path, brand: str, market: str) -> list[dict]:
                 "Brand": brand_norm,
                 "Model": model,
                 "Body_Type": body,
-                "Fuel_Type": normalize_fuel(engine),
+                "Fuel_Type": normalize_fuel(engine, version, model),
                 "Year": int(year) if year else None,
                 "Available_Date": clean_text(first(row, "Available_Date", "Fecha", "Fecha Disponible", "Date")),
                 "Dealer": clean_text(first(row, "Dealer", "Concesionario")),

@@ -257,7 +257,7 @@ footer { visibility: hidden; }
 # CONSTANTES
 # ─────────────────────────────────────────────────────────────
 BASE = Path(__file__).parent
-DATA_SCHEMA_VERSION = "2026-06-09-master-normalized-model-version"
+DATA_SCHEMA_VERSION = "2026-06-09-master-normalized-model-version-fuel"
 
 COLORS = {
     "BMW": "#1c69d4",

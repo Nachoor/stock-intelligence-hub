@@ -653,22 +653,75 @@ def sidebar_filters(df):
     with st.sidebar:
         st.markdown("### Filtros")
 
-        def msel(label, col):
-            opts = sorted(
-                x for x in df[col].dropna().astype(str).str.strip().unique().tolist()
-                if x and x.lower() not in {"nan", "none"}
-            ) if col in df.columns else []
-            return st.multiselect(label, opts, default=[], key=f"f_{col}")
+        filter_defs = [
+            ("Marca", "Marca", "f_Marca"),
+            ("Mercado", "Mercado", "f_Mercado"),
+            ("Modelo", "Modelo_norm", "f_Modelo_norm"),
+            ("Versión", "Versión", "f_Versión"),
+            ("Combustible", "Fuel_type", "f_Fuel_type"),
+            ("Carrocería", "Carrocería", "f_Carrocería"),
+            ("Concesionario", "Concesionario", "f_Concesionario"),
+            ("Ciudad", "Ciudad", "f_Ciudad"),
+            ("Provincia", "Provincia", "f_Provincia"),
+            ("Año", "Año", "f_año"),
+        ]
+        filter_keys = [key for _, _, key in filter_defs]
+        range_keys = ["f_pvp_range", "f_cuota_range", "f_solo_pvp", "f_solo_cuota"]
 
-        marcas     = msel("Marca",          "Marca")
-        mercados   = msel("Mercado",        "Mercado")
-        modelos    = msel("Modelo",        "Modelo_norm")
-        versiones  = msel("Versión",       "Versión")
-        fuels      = msel("Combustible",    "Fuel_type")
-        carros     = msel("Carrocería",     "Carrocería")
-        dealers    = msel("Concesionario",  "Concesionario")
-        ciudades   = msel("Ciudad",         "Ciudad")
-        provincias = msel("Provincia",      "Provincia")
+        if st.button("Borrar todos los filtros", width="stretch"):
+            for key in filter_keys + range_keys:
+                st.session_state.pop(key, None)
+            st.rerun()
+
+        def selected_for(key):
+            value = st.session_state.get(key, [])
+            return value if isinstance(value, list) else []
+
+        def mask_from_filters(exclude_col=None):
+            mask = pd.Series(True, index=df.index)
+            for _, col, key in filter_defs:
+                if col == exclude_col or col not in df.columns:
+                    continue
+                sel = selected_for(key)
+                if sel:
+                    mask &= df[col].isin(sel)
+            return mask
+
+        def clean_options(col, opts):
+            values = []
+            for x in opts:
+                if pd.isna(x):
+                    continue
+                if col == "Año":
+                    values.append(int(x))
+                    continue
+                text = str(x).strip()
+                if text and text.lower() not in {"nan", "none"}:
+                    values.append(text)
+            return sorted(set(values))
+
+        def options_for(col):
+            if col not in df.columns:
+                return []
+            base = df.loc[mask_from_filters(exclude_col=col), col].dropna()
+            return clean_options(col, base.tolist())
+
+        def msel(label, col, key):
+            opts = options_for(col)
+            current = [x for x in selected_for(key) if x in opts]
+            if st.session_state.get(key, []) != current:
+                st.session_state[key] = current
+            return st.multiselect(label, opts, key=key)
+
+        marcas     = msel("Marca",          "Marca",          "f_Marca")
+        mercados   = msel("Mercado",        "Mercado",        "f_Mercado")
+        modelos    = msel("Modelo",         "Modelo_norm",    "f_Modelo_norm")
+        versiones  = msel("Versión",        "Versión",        "f_Versión")
+        fuels      = msel("Combustible",    "Fuel_type",      "f_Fuel_type")
+        carros     = msel("Carrocería",     "Carrocería",     "f_Carrocería")
+        dealers    = msel("Concesionario",  "Concesionario",  "f_Concesionario")
+        ciudades   = msel("Ciudad",         "Ciudad",         "f_Ciudad")
+        provincias = msel("Provincia",      "Provincia",      "f_Provincia")
 
         st.markdown("---")
 
@@ -677,7 +730,7 @@ def sidebar_filters(df):
         if len(pvp_s) > 0:
             pmin, pmax = float(pvp_s.min()), float(pvp_s.max())
             pmax = pmax if pmax > pmin else pmin + 1.0
-            pvp_r = st.slider("Precio (€)", pmin, pmax, (pmin, pmax), step=500.0, format="%.0f€")
+            pvp_r = st.slider("Precio (€)", pmin, pmax, (pmin, pmax), step=500.0, format="%.0f€", key="f_pvp_range")
         else:
             pvp_r = (0, 999999)
 
@@ -686,16 +739,15 @@ def sidebar_filters(df):
         if len(cuota_s) > 0:
             cmin, cmax = float(cuota_s.min()), float(cuota_s.max())
             cmax = cmax if cmax > cmin else cmin + 1.0
-            cuota_r = st.slider("Cuota/mes (€)", cmin, cmax, (cmin, cmax), step=10.0, format="%.0f€")
+            cuota_r = st.slider("Cuota/mes (€)", cmin, cmax, (cmin, cmax), step=10.0, format="%.0f€", key="f_cuota_range")
         else:
             cuota_r = (0, 99999)
 
         st.markdown("---")
-        solo_pvp   = st.checkbox("Solo con precio informado",       False)
-        solo_cuota = st.checkbox("Solo con cuota mensual informada", False)
+        solo_pvp   = st.checkbox("Solo con precio informado",       False, key="f_solo_pvp")
+        solo_cuota = st.checkbox("Solo con cuota mensual informada", False, key="f_solo_cuota")
 
-        años_opts = sorted(df["Año"].dropna().unique().astype(int).tolist()) if "Año" in df.columns else []
-        años = st.multiselect("Año", años_opts, default=[], key="f_año")
+        años = msel("Año", "Año", "f_año")
 
     # Aplicar
     mask = pd.Series(True, index=df.index)

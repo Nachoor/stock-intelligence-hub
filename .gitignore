@@ -1,0 +1,17 @@
+__pycache__/
+*.py[cod]
+
+# Raw scraper/debug outputs
+*_raw_*.json
+mercedes_pt_raw_page0.json
+mercedes_pt_page.html
+dealers.json
+*.partial.xlsx
+
+# Market-level generated workbooks are rebuilt by GitHub Actions.
+ES_MARKET/*.xlsx
+PT_MARKET/*.xlsx
+
+# Local notebooks are not needed by the deployed app.
+*.ipynb
+

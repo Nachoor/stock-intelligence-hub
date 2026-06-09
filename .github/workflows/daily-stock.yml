@@ -1,0 +1,65 @@
+name: Daily stock update
+
+on:
+  workflow_dispatch:
+  schedule:
+    # 04:00 UTC = 06:00 Europe/Madrid during daylight saving time.
+    - cron: "0 4 * * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: daily-stock-update
+  cancel-in-progress: false
+
+jobs:
+  update-stock:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          python -m playwright install --with-deps chromium
+
+      - name: Run scrapers and rebuild dataset
+        env:
+          BMW_HEADLESS: "1"
+          PLAYWRIGHT_HEADLESS: "1"
+        run: python -u run_daily_update.py
+
+      - name: Validate generated dataset
+        run: |
+          python - <<'PY'
+          import pandas as pd
+          df = pd.read_csv("STOCK_UNIFICADO_GLOBAL.csv", low_memory=False)
+          print(df.shape)
+          print(pd.crosstab(df["Market"], df["Brand"]))
+          assert len(df) > 1000
+          assert df["Market"].nunique() >= 2
+          assert df["Brand"].nunique() >= 3
+          PY
+
+      - name: Commit updated CSV
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add STOCK_UNIFICADO_GLOBAL.csv
+          if git diff --cached --quiet; then
+            echo "No dataset changes to commit."
+          else
+            git commit -m "Daily stock dataset update"
+            git push
+          fi

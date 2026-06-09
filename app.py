@@ -257,7 +257,7 @@ footer { visibility: hidden; }
 # CONSTANTES
 # ─────────────────────────────────────────────────────────────
 BASE = Path(__file__).parent
-DATA_SCHEMA_VERSION = "2026-06-09-master-normalized-model-version-fuel"
+DATA_SCHEMA_VERSION = "2026-06-09-master-normalized-model-version-fuel-published-date"
 
 COLORS = {
     "BMW": "#1c69d4",
@@ -498,7 +498,7 @@ def _post_normalize(df):
     for c in ["PVP", "Cuota_mes", "TAE", "TIN", "Año"]:
         if c in df.columns:
             df[c] = pd.to_numeric(df[c], errors="coerce")
-    for c in ["Marca", "Mercado", "Modelo_norm", "Modelo", "Versión", "Fuel_type", "Carrocería", "Concesionario", "Ciudad", "Provincia"]:
+    for c in ["Marca", "Mercado", "Modelo_norm", "Modelo", "Versión", "Fecha", "Fecha Publicacion", "Fuel_type", "Carrocería", "Concesionario", "Ciudad", "Provincia"]:
         if c in df.columns:
             df[c] = df[c].fillna("").astype(str).str.strip()
     if "Fuel_type" in df.columns:
@@ -525,6 +525,7 @@ def _norm_csv(df):
         "Fuel_Type":     "Fuel_type",
         "Year":          "Año",
         "Available_Date":"Fecha",
+        "Published_Date":"Fecha Publicacion",
         "Dealer":        "Concesionario",
         "City":          "Ciudad",
         "Province":      "Provincia",
@@ -1121,7 +1122,7 @@ def tabla_vehiculos(df):
                            placeholder="Modelo, concesionario, ciudad...")
 
     display_cols = [c for c in [
-        "Marca","Modelo_norm","Versión","Año","Fuel_type","Carrocería",
+        "Marca","Modelo_norm","Versión","Año","Fecha Publicacion","Fuel_type","Carrocería",
         "PVP","Cuota_mes","TAE","Concesionario","Ciudad","Provincia",
         "Mercado","Estado","URL",
     ] if c in df.columns]

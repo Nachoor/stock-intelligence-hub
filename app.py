@@ -497,7 +497,7 @@ def _post_normalize(df):
     for c in ["PVP", "Cuota_mes", "TAE", "TIN", "Año"]:
         if c in df.columns:
             df[c] = pd.to_numeric(df[c], errors="coerce")
-    for c in ["Marca", "Mercado", "Modelo_norm", "Modelo", "Fuel_type", "Carrocería", "Concesionario", "Ciudad", "Provincia"]:
+    for c in ["Marca", "Mercado", "Modelo_norm", "Modelo", "Versión", "Fuel_type", "Carrocería", "Concesionario", "Ciudad", "Provincia"]:
         if c in df.columns:
             df[c] = df[c].fillna("").astype(str).str.strip()
     if "Fuel_type" in df.columns:
@@ -657,6 +657,7 @@ def sidebar_filters(df):
         marcas     = msel("Marca",          "Marca")
         mercados   = msel("Mercado",        "Mercado")
         modelos    = msel("Modelo",         "Modelo_norm")
+        versiones  = msel("Versión",        "Versión")
         fuels      = msel("Combustible",    "Fuel_type")
         carros     = msel("Carrocería",     "Carrocería")
         dealers    = msel("Concesionario",  "Concesionario")
@@ -694,7 +695,7 @@ def sidebar_filters(df):
     # Aplicar
     mask = pd.Series(True, index=df.index)
     for col, sel in [
-        ("Marca", marcas), ("Mercado", mercados), ("Modelo_norm", modelos),
+        ("Marca", marcas), ("Mercado", mercados), ("Modelo_norm", modelos), ("Versión", versiones),
         ("Fuel_type", fuels), ("Carrocería", carros), ("Concesionario", dealers),
         ("Ciudad", ciudades), ("Provincia", provincias), ("Estado", estados),
     ]:

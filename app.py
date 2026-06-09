@@ -904,24 +904,28 @@ def charts_stock(df):
     c3, c4 = st.columns(2)
 
     with c3:
-        top_m = df.groupby("Modelo_norm").size().reset_index(name="N").sort_values("N", ascending=False).head(15)
-        fig3 = px.bar(top_m, y="Modelo_norm", x="N", orientation="h",
-                      title="Top 15 modelos por unidades",
+        all_m = df.groupby("Modelo_norm").size().reset_index(name="N").sort_values("N", ascending=False)
+        fig3 = px.bar(all_m.head(10), y="Modelo_norm", x="N", orientation="h",
+                      title="Top 10 modelos por unidades",
                       labels={"N": "Unidades", "Modelo_norm": ""},
                       color="N", color_continuous_scale=["#bfdbfe", "#1c69d4"])
         fig3.update_layout(coloraxis_showscale=False,
                            yaxis=dict(autorange="reversed", tickfont_size=10))
-        st.plotly_chart(fig_base(fig3, 380), width="stretch")
+        st.plotly_chart(fig_base(fig3, 340), width="stretch")
+        with st.expander("Ver todos los modelos"):
+            st.dataframe(all_m.reset_index(drop=True), width="stretch", height=280, hide_index=True)
 
     with c4:
-        top_d = df.groupby("Concesionario").size().reset_index(name="N").sort_values("N", ascending=False).head(12)
-        fig4 = px.bar(top_d, y="Concesionario", x="N", orientation="h",
-                      title="Top 12 concesionarios",
+        all_d = df.groupby("Concesionario").size().reset_index(name="N").sort_values("N", ascending=False)
+        fig4 = px.bar(all_d.head(10), y="Concesionario", x="N", orientation="h",
+                      title="Top 10 concesionarios",
                       labels={"N": "Unidades", "Concesionario": ""},
                       color="N", color_continuous_scale=["#bfdbfe", "#1c69d4"])
         fig4.update_layout(coloraxis_showscale=False,
                            yaxis=dict(autorange="reversed", tickfont_size=10))
-        st.plotly_chart(fig_base(fig4, 380), width="stretch")
+        st.plotly_chart(fig_base(fig4, 340), width="stretch")
+        with st.expander("Ver todos los concesionarios"):
+            st.dataframe(all_d.reset_index(drop=True), width="stretch", height=280, hide_index=True)
 
     if "Ciudad" in df.columns and df["Ciudad"].notna().any():
         top_c = df.groupby("Ciudad").size().reset_index(name="N").sort_values("N", ascending=False).head(20)
@@ -950,6 +954,31 @@ def charts_stock(df):
                           color_discrete_sequence=["#1c69d4","#0f172a"])
             fig7.update_traces(textinfo="percent+label")
             st.plotly_chart(fig_base(fig7, 280), width="stretch")
+
+    fecha_col = "Fecha" if "Fecha" in df.columns else None
+    if fecha_col:
+        df_t = df.copy()
+        df_t["_mes"] = pd.to_datetime(df_t[fecha_col], errors="coerce").dt.to_period("M").astype(str)
+        df_t = df_t[df_t["_mes"].notna() & (df_t["_mes"] != "NaT")]
+        if not df_t.empty:
+            evol = (
+                df_t.groupby(["_mes", "Marca"])
+                .size()
+                .reset_index(name="N")
+                .sort_values("_mes")
+            )
+            fig_ev = px.line(
+                evol,
+                x="_mes",
+                y="N",
+                color="Marca",
+                color_discrete_map=COLORS,
+                title="Evolución del stock por mes y marca",
+                labels={"_mes": "Mes", "N": "Vehículos", "Marca": "Marca"},
+                markers=True,
+            )
+            fig_ev.update_layout(xaxis_tickangle=-35)
+            st.plotly_chart(fig_base(fig_ev, 320), width="stretch")
 
     if "Fecha Publicacion" in df.columns:
         recent = df.copy()
@@ -1127,7 +1156,7 @@ def comparador(df):
     sel = st.multiselect(
         "Selecciona dos o más modelos:",
         modelos_disp,
-        default=modelos_disp[:3] if len(modelos_disp) >= 3 else modelos_disp,
+        default=[],
         key="comp_sel",
     )
     if len(sel) < 2:
@@ -1221,17 +1250,40 @@ def comparador(df):
 # TABLA DE VEHÍCULOS
 # ─────────────────────────────────────────────────────────────
 def tabla_vehiculos(df):
-    # Búsqueda
     search = st.text_input("Buscar:", "", key="tabla_search",
                            placeholder="Modelo, concesionario, ciudad...")
 
-    display_cols = [c for c in [
-        "Marca","Modelo_norm","Versión","Año","Fecha Publicacion","Fuel_type","Carrocería",
-        "PVP","Cuota_mes","TAE","Concesionario","Ciudad","Provincia",
-        "Mercado","Estado","URL",
-    ] if c in df.columns]
+    col_map = {
+        "Marca": "Marca",
+        "Modelo_norm": "Modelo",
+        "Versión": "Versión",
+        "Año": "Año",
+        "Fecha Publicacion": "Fecha Publicacion",
+        "Fuel_type": "Combustible",
+        "Carrocería": "Carrocería",
+        "PVP": "Precio (€)",
+        "Cuota_mes": "Cuota/mes (€)",
+        "TAE": "TAE (%)",
+        "Concesionario": "Concesionario",
+        "Ciudad": "Ciudad",
+        "Provincia": "Provincia",
+        "Mercado": "Mercado",
+        "Estado": "Estado",
+        "URL": "URL",
+    }
+    display_cols = [c for c in col_map if c in df.columns]
+    df_show = df[display_cols].rename(columns=col_map).reset_index(drop=True)
 
-    df_show = df[display_cols].copy().reset_index(drop=True)
+    if "Precio (€)" in df_show.columns:
+        df_show["Precio (€)"] = df["PVP"].map(lambda x: eur(x) if pd.notna(x) else "")
+    if "Cuota/mes (€)" in df_show.columns:
+        df_show["Cuota/mes (€)"] = df["Cuota_mes"].map(lambda x: eu_mes(x) if pd.notna(x) else "")
+    if "TAE (%)" in df_show.columns:
+        df_show["TAE (%)"] = df["TAE"].map(lambda x: pct_val(x, 2))
+    if "Año" in df_show.columns:
+        df_show["Año"] = df["Año"].map(lambda x: str(int(x)) if pd.notna(x) else "")
+    if "Fecha Publicacion" in df_show.columns:
+        df_show["Fecha Publicacion"] = df["Fecha Publicacion"].map(fmt_date)
 
     if search:
         mask = df_show.apply(
@@ -1241,53 +1293,17 @@ def tabla_vehiculos(df):
 
     st.caption(f"{eu_num(len(df_show))} vehículos")
 
-    # Construir HTML de tabla
-    col_labels = {
-        "Modelo_norm":"Modelo","PVP":"Precio (€)","Cuota_mes":"Cuota/mes (€)",
-        "TAE":"TAE (%)","Fuel_type":"Combustible",
-    }
+    col_config = {}
+    if "URL" in df_show.columns:
+        col_config["URL"] = st.column_config.LinkColumn("URL", display_text="Ver anuncio")
 
-    def brand_pill(marca):
-        if marca == "BMW":           return f'<span class="brand-pill pill-bmw">BMW</span>'
-        elif marca == "Audi":        return f'<span class="brand-pill pill-audi">Audi</span>'
-        elif marca in {"Mercedes", "Mercedes-Benz"}: return f'<span class="brand-pill pill-mb">MB</span>'
-        return marca
-
-    headers = "".join(f"<th>{col_labels.get(c, c)}</th>" for c in display_cols)
-    rows_html = ""
-    for _, row in df_show.iterrows():
-        cells = ""
-        for c in display_cols:
-            v = row[c]
-            if c == "Marca":
-                cells += f"<td>{brand_pill(str(v) if pd.notna(v) else '')}</td>"
-            elif c == "URL":
-                if pd.notna(v) and str(v).startswith("http"):
-                    cells += f'<td><a href="{v}" target="_blank" style="color:#1c69d4;text-decoration:none;">Ver anuncio</a></td>'
-                else:
-                    cells += "<td>—</td>"
-            elif c == "PVP":
-                cells += f"<td>{eur(v)}</td>"
-            elif c in ("Cuota_mes","Entrada","Cuota_final"):
-                cells += f"<td>{eu_mes(v) if c == 'Cuota_mes' else eur(v)}</td>"
-            elif c in ("TAE","TIN"):
-                cells += f"<td>{f'{v:.2f}%'.replace('.', ',') if pd.notna(v) else '—'}</td>"
-            elif c == "Año":
-                cells += f"<td>{int(v) if pd.notna(v) else '—'}</td>"
-            elif c == "Fecha Publicacion":
-                cells += f"<td>{fmt_date(v)}</td>"
-            else:
-                cells += f"<td>{v if pd.notna(v) else '—'}</td>"
-        rows_html += f"<tr>{cells}</tr>"
-
-    html = (
-        f'<div class="table-scroll">'
-        f'<table class="vehicle-table">'
-        f'<thead><tr>{headers}</tr></thead>'
-        f'<tbody>{rows_html}</tbody>'
-        f'</table></div>'
+    st.dataframe(
+        df_show,
+        width="stretch",
+        height=520,
+        hide_index=True,
+        column_config=col_config,
     )
-    st.markdown(html, unsafe_allow_html=True)
 
     # Exportar con formato europeo para lectura en Excel/Sheets.
     st.markdown("<br>", unsafe_allow_html=True)

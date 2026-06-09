@@ -23,6 +23,7 @@ import json
 import time
 import os
 from datetime import datetime
+from urllib.parse import parse_qs, urlparse
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment
 from collections import Counter
@@ -87,6 +88,18 @@ def to_str(val):
     if isinstance(val, dict):
         return val.get("description") or val.get("code") or str(val)
     return str(val)
+
+
+def audi_detail_url(web_link):
+    """Convert Audi entry links to the final stock detail URL."""
+    if not web_link:
+        return ""
+    if "entry.audi.com" not in web_link:
+        return web_link
+    vehicle_id = parse_qs(urlparse(web_link).query).get("id", [""])[0]
+    if not vehicle_id:
+        return web_link
+    return "https://www.audi.es/es/buscador-de-stock-nuevo/details/?vehicleid=" + vehicle_id
 
 
 def parse_vehicle(v):
@@ -154,6 +167,7 @@ def parse_vehicle(v):
     web_link    = to_str(v.get("weblink", ""))
     if web_link and not web_link.startswith("http"):
         web_link = "https://www.audi.es" + web_link
+    web_link = audi_detail_url(web_link)
     tipo        = "Ocasión" if v.get("used") else "Nuevo"
     biz_model   = safe_get(v, "businessModel", "description")
     campaign    = "Sí" if v.get("hasCampaigns") else ""

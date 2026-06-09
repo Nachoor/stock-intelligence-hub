@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 import unicodedata
 from pathlib import Path
+from urllib.parse import parse_qs, urlparse
 
 import pandas as pd
 
@@ -208,6 +209,15 @@ def clean_text(value: object) -> str:
         return ""
     text = str(value).replace("\xa0", " ").strip()
     return re.sub(r"\s+", " ", text).strip()
+
+
+def normalize_offer_url(url: object, brand: str, market: str) -> str:
+    clean_url = clean_text(url)
+    if brand == "Audi" and market == "ES" and "entry.audi.com" in clean_url:
+        vehicle_id = parse_qs(urlparse(clean_url).query).get("id", [""])[0]
+        if vehicle_id:
+            return "https://www.audi.es/es/buscador-de-stock-nuevo/details/?vehicleid=" + vehicle_id
+    return clean_url
 
 
 def clean_model(value: object, brand: str = "") -> str:
@@ -465,6 +475,8 @@ def normalize_rows(path: Path, brand: str, market: str) -> list[dict]:
         apr = to_number(first(row, "APR_pct", "TAE (%)", "APR (%)"))
         year = to_number(first(row, "Year", "Año", "Ano"))
 
+        url = normalize_offer_url(first(row, "URL", "URL Coche", "Car URL"), brand_norm, market)
+
         rows.append(
             {
                 "Market": market,
@@ -487,7 +499,7 @@ def normalize_rows(path: Path, brand: str, market: str) -> list[dict]:
                 "APR_pct": apr,
                 "Availability": clean_text(first(row, "Availability", "Estado", "Disponibilidad")),
                 "Engine_Raw": clean_text(engine),
-                "URL": clean_text(first(row, "URL", "URL Coche", "Car URL")),
+                "URL": url,
             }
         )
     print(f"{market} {brand}: {len(rows)} rows from {path.relative_to(BASE_DIR)}")

@@ -312,13 +312,20 @@ _MERCEDES_CLASS_MAP = {
     "gls": "Clase GLS", "sl": "Clase SL",
 }
 _MERCEDES_CLASS_RE = re.compile(r"^(?:clase|class)\s+([a-z0-9]+)$|^([a-z0-9]+)\s*[- ]?\s*class$", re.IGNORECASE)
+_AUDI_MODEL_PREFIXES = [
+    "A1 Sportback", "A1 allstreet", "A3 Sportback", "A3 Limousine", "A3 allstreet",
+    "A5 Avant", "A5 Limousine", "A5", "A6 Avant e-tron", "A6 Sportback e-tron",
+    "A6 Avant", "A6 Limousine", "Q2", "Q3 Sportback e-hybrid", "Q3 SUV e-hybrid",
+    "Q3 Sportback", "Q3 SUV", "Q3", "Q4 Sportback e-tron", "Q4 SUV e-tron",
+    "Q5 Sportback", "Q5 SUV", "Q5", "Q6 Sportback e-tron", "Q6 SUV e-tron", "Q7", "Q8",
+]
 
 def _norm_key(value):
     s = unicodedata.normalize("NFD", str(value or ""))
     s = "".join(c for c in s if unicodedata.category(c) != "Mn")
     return re.sub(r"\s+", " ", s).strip().lower()
 
-def clean_model_name(value):
+def clean_model_name(value, brand=""):
     model = re.sub(r"\s+", " ", str(value or "")).strip()
     if not model:
         return ""
@@ -328,6 +335,10 @@ def clean_model_name(value):
     bm = _BMW_SERIES_KEY_RE.match(key)
     if bm:
         return f"Serie {bm.group(1) or bm.group(2)}"
+    if brand == "BMW":
+        bmw = re.match(r"^(i?x[1-7]|m[1-8])\b", key, re.IGNORECASE)
+        if bmw:
+            return bmw.group(1).upper()
 
     mc = _MERCEDES_CLASS_RE.match(key)
     if mc:
@@ -335,16 +346,77 @@ def clean_model_name(value):
         return _MERCEDES_CLASS_MAP.get(code, f"Clase {code.upper()}")
     if key in _MERCEDES_CLASS_MAP:
         return _MERCEDES_CLASS_MAP[key]
+    if brand == "Mercedes-Benz":
+        for code in sorted(_MERCEDES_CLASS_MAP, key=len, reverse=True):
+            if key == code or key.startswith(code + " "):
+                return _MERCEDES_CLASS_MAP[code]
+        eq = re.match(r"^(eqa|eqb|eqc|eqe|eqs)\b", key, re.IGNORECASE)
+        if eq:
+            return eq.group(1).upper()
+
+    if brand == "Audi":
+        for prefix in sorted(_AUDI_MODEL_PREFIXES, key=len, reverse=True):
+            prefix_key = _norm_key(prefix)
+            if key == prefix_key or key.startswith(prefix_key + " "):
+                return prefix
 
     return model.replace("Série", "Serie")
+
+def clean_body_type(model="", body="", version=""):
+    model_key = _norm_key(model)
+    body_key = _norm_key(body)
+    version_key = _norm_key(version)
+    key = " ".join([model_key, body_key, version_key]).strip()
+
+    suv_tokens = [
+        "suv", "sport activity vehicle", "sports activity vehicle", "sav",
+        "all terrain", "all-terrain", "off road", "off-road",
+    ]
+    suv_prefixes = (
+        "q2", "q3", "q4", "q5", "q6", "q7", "q8",
+        "x1", "x2", "x3", "x4", "x5", "x6", "x7", "xm", "ix",
+        "gla", "glb", "glc", "gle", "gls", "eqa", "eqb", "eqc",
+        "clase gla", "clase glb", "clase glc", "clase gle", "clase gls", "clase g",
+        "mercedes-amg gla", "mercedes-amg glc", "mercedes-amg gle", "mercedes-amg gls", "mercedes-amg g",
+    )
+
+    if any(x in key for x in ["cabrio", "convertible", "roadster"]):
+        return "CABRIO"
+    if any(x in key for x in suv_tokens) or model_key.startswith(suv_prefixes):
+        return "SUV"
+    if any(x in key for x in ["avant", "touring", "estate", "familiar", "station", "shooting brake", "allstreet", "wagon", "break"]):
+        return "TOURING"
+    if any(x in key for x in ["coupe", "coup", "gran turismo", "gran_turismo"]):
+        return "COUPE"
+    if any(x in key for x in ["sedan", "berlina", "limousine", "saloon"]):
+        return "SEDAN"
+    if any(x in key for x in ["sportback", "sportshatch", "sports hatch", "sports_hatch", "hatch", "hach", "compact", "5-door", "5 door", "compacto"]):
+        return "HATCH"
+
+    if model_key.startswith(("a1", "a3", "serie 1", "clase a", "clase b")):
+        return "HATCH"
+    if model_key.startswith(("a5 avant", "a6 avant")):
+        return "TOURING"
+    if model_key.startswith(("a3 limousine", "a5 limousine", "a6", "serie 3", "serie 5", "clase c", "clase e", "clase s", "eqe", "eqs")):
+        return "SEDAN"
+    if model_key.startswith(("a5", "s e-tron gt", "serie 2", "serie 4", "serie 8", "clase cla", "clase cle", "clase cls", "clase sl")):
+        return "COUPE"
+
+    return "OTHER"
 
 def _post_normalize(df):
     df = df.copy()
     if "Modelo" in df.columns:
-        df["Modelo"] = df["Modelo"].map(clean_model_name)
+        if "Marca" in df.columns:
+            df["Modelo"] = [clean_model_name(model, brand) for model, brand in zip(df["Modelo"], df["Marca"])]
+        else:
+            df["Modelo"] = df["Modelo"].map(clean_model_name)
         df["Modelo_norm"] = df["Modelo"]
     elif "Modelo_norm" in df.columns:
-        df["Modelo_norm"] = df["Modelo_norm"].map(clean_model_name)
+        if "Marca" in df.columns:
+            df["Modelo_norm"] = [clean_model_name(model, brand) for model, brand in zip(df["Modelo_norm"], df["Marca"])]
+        else:
+            df["Modelo_norm"] = df["Modelo_norm"].map(clean_model_name)
         df["Modelo"] = df["Modelo_norm"]
 
     for c in ["PVP", "Cuota_mes", "TAE", "TIN", "Año"]:
@@ -353,6 +425,17 @@ def _post_normalize(df):
     for c in ["Marca", "Mercado", "Modelo_norm", "Modelo", "Fuel_type", "Carrocería", "Concesionario", "Ciudad", "Provincia"]:
         if c in df.columns:
             df[c] = df[c].fillna("").astype(str).str.strip()
+    if "Fuel_type" in df.columns:
+        df["Fuel_type"] = df["Fuel_type"].replace({"HEV": "ICE", "MHEV": "ICE"})
+    body_col = next((c for c in df.columns if _norm_key(c) in {"carroceria", "body_type", "body"}), None)
+    version_col = next((c for c in df.columns if _norm_key(c) in {"version", "versao"}), None)
+    model_col = "Modelo_norm" if "Modelo_norm" in df.columns else ("Modelo" if "Modelo" in df.columns else None)
+    if body_col and model_col:
+        versions = df[version_col] if version_col else pd.Series([""] * len(df), index=df.index)
+        df[body_col] = [
+            clean_body_type(model, body, version)
+            for model, body, version in zip(df[model_col], df[body_col], versions)
+        ]
     return df
 
 def _norm_csv(df):

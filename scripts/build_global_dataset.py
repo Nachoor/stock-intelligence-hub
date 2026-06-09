@@ -66,6 +66,13 @@ MERCEDES_CLASS_RE = re.compile(
     r"^(?:clase|class)\s+([a-z0-9]+)$|^([a-z0-9]+)\s*[- ]?\s*class$",
     re.IGNORECASE,
 )
+AUDI_MODEL_PREFIXES = [
+    "A1 Sportback", "A1 allstreet", "A3 Sportback", "A3 Limousine", "A3 allstreet",
+    "A5 Avant", "A5 Limousine", "A5", "A6 Avant e-tron", "A6 Sportback e-tron",
+    "A6 Avant", "A6 Limousine", "Q2", "Q3 Sportback e-hybrid", "Q3 SUV e-hybrid",
+    "Q3 Sportback", "Q3 SUV", "Q3", "Q4 Sportback e-tron", "Q4 SUV e-tron",
+    "Q5 Sportback", "Q5 SUV", "Q5", "Q6 Sportback e-tron", "Q6 SUV e-tron", "Q7", "Q8",
+]
 
 
 ES_PROVINCES_BY_CITY = {
@@ -135,7 +142,7 @@ def clean_text(value: object) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
-def clean_model(value: object) -> str:
+def clean_model(value: object, brand: str = "") -> str:
     model = clean_text(value)
     if not model:
         return ""
@@ -145,6 +152,10 @@ def clean_model(value: object) -> str:
     bm = BMW_SERIES_KEY_RE.match(key)
     if bm:
         return f"Serie {bm.group(1) or bm.group(2)}"
+    if brand == "BMW":
+        bmw = re.match(r"^(i?x[1-7]|m[1-8])\b", key, re.IGNORECASE)
+        if bmw:
+            return bmw.group(1).upper()
 
     mc = MERCEDES_CLASS_RE.match(key)
     if mc:
@@ -152,6 +163,19 @@ def clean_model(value: object) -> str:
         return MERCEDES_CLASS_MAP.get(code, f"Clase {code.upper()}")
     if key in MERCEDES_CLASS_MAP:
         return MERCEDES_CLASS_MAP[key]
+    if brand == "Mercedes-Benz":
+        for code in sorted(MERCEDES_CLASS_MAP, key=len, reverse=True):
+            if key == code or key.startswith(code + " "):
+                return MERCEDES_CLASS_MAP[code]
+        eq = re.match(r"^(eqa|eqb|eqc|eqe|eqs)\b", key, re.IGNORECASE)
+        if eq:
+            return eq.group(1).upper()
+
+    if brand == "Audi":
+        model_key = norm_key(model)
+        for prefix in sorted(AUDI_MODEL_PREFIXES, key=len, reverse=True):
+            if model_key == norm_key(prefix) or model_key.startswith(norm_key(prefix) + " "):
+                return prefix
 
     return model.replace("Série", "Serie")
 
@@ -165,28 +189,53 @@ def normalize_fuel(value: object) -> str:
     if any(x in key for x in ["plug", "phev", "hibrido enchufable", "hybrid plug", "tfsi e", "e-hybrid"]):
         return "PHEV"
     if "mhev" in key or "mild" in key or "hibrido suave" in key:
-        return "MHEV"
+        return "ICE"
     if "hybrid" in key or "hibrid" in key or "hev" in key:
-        return "HEV"
+        return "ICE"
     return "ICE"
 
 
 def normalize_body(model: object, body: object = "", version: object = "") -> str:
-    text = " ".join([clean_text(model), clean_text(body), clean_text(version)])
-    key = norm_key(text)
-    if any(x in key for x in ["sportback", "hatch", "hach", "compact"]):
-        return "HATCH"
-    if any(x in key for x in ["avant", "touring", "estate", "familiar"]):
-        return "TOURING"
-    if any(x in key for x in ["cabrio", "convertible"]):
+    model_key = norm_key(model)
+    body_key = norm_key(body)
+    version_key = norm_key(version)
+    key = " ".join([model_key, body_key, version_key]).strip()
+
+    suv_tokens = [
+        "suv", "sport activity vehicle", "sports activity vehicle", "sav",
+        "all terrain", "all-terrain", "off road", "off-road",
+    ]
+    suv_prefixes = (
+        "q2", "q3", "q4", "q5", "q6", "q7", "q8",
+        "x1", "x2", "x3", "x4", "x5", "x6", "x7", "xm", "ix",
+        "gla", "glb", "glc", "gle", "gls", "eqa", "eqb", "eqc",
+        "clase gla", "clase glb", "clase glc", "clase gle", "clase gls", "clase g",
+        "mercedes-amg gla", "mercedes-amg glc", "mercedes-amg gle", "mercedes-amg gls", "mercedes-amg g",
+    )
+
+    if any(x in key for x in ["cabrio", "convertible", "roadster"]):
         return "CABRIO"
-    if "coupe" in key or "coup" in key:
-        return "COUPE"
-    if any(x in key for x in ["suv", "x1", "x2", "x3", "x4", "x5", "x6", "x7", "q2", "q3", "q4", "q5", "q6", "q7", "q8", "gla", "glb", "glc", "gle", "gls", "eqa", "eqb", "eqc", "eqe", "eqs"]):
+    if any(x in key for x in suv_tokens) or model_key.startswith(suv_prefixes):
         return "SUV"
-    if any(x in key for x in ["sedan", "berlina", "limousine"]):
+    if any(x in key for x in ["avant", "touring", "estate", "familiar", "station", "shooting brake", "allstreet", "wagon", "break"]):
+        return "TOURING"
+    if any(x in key for x in ["coupe", "coup", "gran turismo", "gran_turismo"]):
+        return "COUPE"
+    if any(x in key for x in ["sedan", "berlina", "limousine", "saloon"]):
         return "SEDAN"
-    return clean_text(body)
+    if any(x in key for x in ["sportback", "sportshatch", "sports hatch", "sports_hatch", "hatch", "hach", "compact", "5-door", "5 door", "compacto"]):
+        return "HATCH"
+
+    if model_key.startswith(("a1", "a3", "serie 1", "clase a", "clase b")):
+        return "HATCH"
+    if model_key.startswith(("a5 avant", "a6 avant")):
+        return "TOURING"
+    if model_key.startswith(("a3 limousine", "a5 limousine", "a6", "serie 3", "serie 5", "clase c", "clase e", "clase s", "eqe", "eqs")):
+        return "SEDAN"
+    if model_key.startswith(("a5", "s e-tron gt", "serie 2", "serie 4", "serie 8", "clase cla", "clase cle", "clase cls", "clase sl")):
+        return "COUPE"
+
+    return "OTHER"
 
 
 def to_number(value: object):
@@ -228,8 +277,8 @@ def normalize_rows(path: Path, brand: str, market: str) -> list[dict]:
     df = read_excel(path)
     rows: list[dict] = []
     for _, row in df.iterrows():
-        raw_model = first(row, "Model", "Modelo_norm", "Modelo", "Carline", "model")
-        model = clean_model(raw_model)
+        raw_model = first(row, "Carline", "Model Group", "Modelo_norm", "Model", "Modelo", "model")
+        model = clean_model(raw_model, brand)
         if not model:
             continue
 

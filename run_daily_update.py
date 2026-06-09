@@ -18,12 +18,15 @@ SCRAPERS = [
     ("PT Mercedes-Benz", BASE_DIR / "PT_MARKET", "mercedes_scraper_pt.py"),
 ]
 
+SCRAPER_TIMEOUT_SECONDS = 45 * 60
+BUILD_TIMEOUT_SECONDS = 10 * 60
 
-def run_step(label: str, cwd: Path, args: list[str], env: dict[str, str]) -> None:
+
+def run_step(label: str, cwd: Path, args: list[str], env: dict[str, str], timeout: int) -> None:
     print("\n" + "=" * 80, flush=True)
     print(label, flush=True)
     print("=" * 80, flush=True)
-    subprocess.run(args, cwd=str(cwd), env=env, check=True)
+    subprocess.run(args, cwd=str(cwd), env=env, check=True, timeout=timeout)
 
 
 def main() -> None:
@@ -38,13 +41,14 @@ def main() -> None:
 
     if not ns.skip_scrapers:
         for label, cwd, script in SCRAPERS:
-            run_step(label, cwd, [sys.executable, "-u", script], env)
+            run_step(label, cwd, [sys.executable, "-u", script], env, SCRAPER_TIMEOUT_SECONDS)
 
     run_step(
         "Build normalized global dataset",
         BASE_DIR,
         [sys.executable, "-u", str(BASE_DIR / "scripts" / "build_global_dataset.py")],
         env,
+        BUILD_TIMEOUT_SECONDS,
     )
 
 

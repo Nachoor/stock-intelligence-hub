@@ -278,7 +278,7 @@ FUEL_COLORS = {
     "ICE":  "#64748b",
     "HEV":  "#16a34a",
     "MHEV": "#0ea5e9",
-    "BEV":  "#7c3aed",
+    "BEV":  "#16a34a",
     "PHEV": "#d97706",
 }
 TPL = "plotly_white"

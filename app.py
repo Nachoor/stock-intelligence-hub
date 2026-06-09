@@ -50,14 +50,15 @@ div[data-testid="stToolbar"] { display: none; }
 #MainMenu { visibility: hidden; }
 footer { visibility: hidden; }
 
-/* Header — ocupa todo el ancho del área de contenido */
+/* Header — ocupa todo el ancho del bloque de contenido */
 .app-header {
-    display: block;
-    width: calc(100% + 160px);
-    margin-left: -80px;
-    margin-right: -80px;
-    margin-top: -2rem;
-    margin-bottom: 1rem;
+    display: block !important;
+    width: calc(100% + 160px) !important;
+    max-width: calc(100% + 160px) !important;
+    margin-left: -80px !important;
+    margin-right: -80px !important;
+    margin-top: -96px !important;
+    margin-bottom: 1.5rem !important;
 }
 
 /* ── Sidebar ────────────────────────────────── */

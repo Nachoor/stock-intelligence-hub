@@ -955,31 +955,6 @@ def charts_stock(df):
             fig7.update_traces(textinfo="percent+label")
             st.plotly_chart(fig_base(fig7, 280), width="stretch")
 
-    fecha_col = "Fecha" if "Fecha" in df.columns else None
-    if fecha_col:
-        df_t = df.copy()
-        df_t["_mes"] = pd.to_datetime(df_t[fecha_col], errors="coerce").dt.to_period("M").astype(str)
-        df_t = df_t[df_t["_mes"].notna() & (df_t["_mes"] != "NaT")]
-        if not df_t.empty:
-            evol = (
-                df_t.groupby(["_mes", "Marca"])
-                .size()
-                .reset_index(name="N")
-                .sort_values("_mes")
-            )
-            fig_ev = px.line(
-                evol,
-                x="_mes",
-                y="N",
-                color="Marca",
-                color_discrete_map=COLORS,
-                title="Evolución del stock por mes y marca",
-                labels={"_mes": "Mes", "N": "Vehículos", "Marca": "Marca"},
-                markers=True,
-            )
-            fig_ev.update_layout(xaxis_tickangle=-35)
-            st.plotly_chart(fig_base(fig_ev, 320), width="stretch")
-
     if "Fecha Publicacion" in df.columns:
         recent = df.copy()
         recent["_FechaPub_dt"] = pd.to_datetime(recent["Fecha Publicacion"], errors="coerce")

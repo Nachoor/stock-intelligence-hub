@@ -50,11 +50,25 @@ div[data-testid="stToolbar"] { display: none; }
 #MainMenu { visibility: hidden; }
 footer { visibility: hidden; }
 
-/* Header imagen */
+/* Header — full viewport width, escapa el contenedor de Streamlit */
 .app-header {
-    width: 100%;
     display: block;
+    width: 100vw;
+    position: relative;
+    left: 50%;
+    right: 50%;
+    margin-left: -50vw;
+    margin-right: -50vw;
+    margin-top: -1rem;
     margin-bottom: 0;
+}
+
+/* Quitar padding superior del bloque principal para que el header pegue arriba */
+[data-testid="stAppViewBlockContainer"] {
+    padding-top: 0 !important;
+}
+section[data-testid="stMain"] > div:first-child {
+    padding-top: 0 !important;
 }
 
 /* ── Sidebar ────────────────────────────────── */

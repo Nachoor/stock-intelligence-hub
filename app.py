@@ -279,6 +279,7 @@ def fig_base(fig, h=310):
         font=dict(family="Inter", size=11, color="#334155"),
         paper_bgcolor="white",
         plot_bgcolor="white",
+        separators=",.",
         legend=dict(
             orientation="h", yanchor="bottom", y=1.02,
             xanchor="right", x=1, font_size=10,
@@ -519,24 +520,27 @@ def kpi(label, value, sub=""):
         f'{sub_html}</div>'
     )
 
-def _eu(x, dec=0):
-    """Formato europeo: 1.234,56 €"""
+def eu_num(x, dec=0):
+    """Formato europeo: 1.234,56"""
     if not pd.notna(x) or x != x:
         return "—"
-    s = f"{x:,.{dec}f}"                     # "1,234.56"
-    s = s.replace(",", "X").replace(".", ",").replace("X", ".")  # "1.234,56"
-    return f"{s} €"
+    s = f"{float(x):,.{dec}f}"
+    return s.replace(",", "X").replace(".", ",").replace("X", ".")
 
-def eur(x):       return _eu(x, 0)
-def eur2(x):      return _eu(x, 2)
-def eu_mes(x):    return f"{_eu(x, 0)}/mes" if pd.notna(x) and x == x else "—"
-def eu_num(x):    # número sin símbolo
-    if not pd.notna(x) or x != x: return "—"
-    s = f"{x:,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
-    return s
+def eur(x, dec=0):
+    return f"{eu_num(x, dec)} €" if pd.notna(x) and x == x else "—"
 
-def pct(n, d):
-    return f"{n/d*100:.0f}%" if d > 0 else "—"
+def eur2(x):
+    return eur(x, 2)
+
+def eu_mes(x):
+    return f"{eur(x, 0)}/mes" if pd.notna(x) and x == x else "—"
+
+def pct(n, d, dec=1):
+    return f"{(n / d * 100):.{dec}f}%".replace(".", ",") if d > 0 else "—"
+
+def pct_val(x, dec=1):
+    return f"{x:.{dec}f}%".replace(".", ",") if pd.notna(x) and x == x else "—"
 
 def show_kpis(df):
     total   = len(df)
@@ -559,7 +563,7 @@ def show_kpis(df):
         ("Con cuota/mes",     eu_num(n_cuota),            pct(n_cuota, total)),
         ("Precio medio",      eur(pvp_s.mean()),          f"Mín. {eur(pvp_s.min())}"),
         ("Precio máximo",     eur(pvp_s.max()),           ""),
-        ("Cuota media",       eu_mes(cuota_s.mean()) if len(cuota_s) else "—", f"Mín. {_eu(cuota_s.min(), 0)}" if len(cuota_s) else ""),
+        ("Cuota media",       eu_mes(cuota_s.mean()) if len(cuota_s) else "—", f"Mín. {eur(cuota_s.min())}" if len(cuota_s) else ""),
         ("Cuota máxima",      eu_mes(cuota_s.max())  if len(cuota_s) else "—", ""),
     ]
     for col, (l, v, s) in zip(row1, datos_r1):
@@ -576,7 +580,7 @@ def show_kpis(df):
         ("Modelo top stock",  str(top_modelo)[:26],        "más unidades"),
         ("Ciudad con más stock", str(top_ciudad),          ""),
         ("Dealer principal",  str(top_dealer)[:24],        ""),
-        ("TAE media",         f"{tae_s.mean():.2f}%" if len(tae_s) else "—", "sobre financiados"),
+        ("TAE media",         pct_val(tae_s.mean(), 2) if len(tae_s) else "—", "sobre financiados"),
     ]
     for col, (l, v, s) in zip(row2, datos_r2):
         col.markdown(kpi(l, v, s), unsafe_allow_html=True)
@@ -677,7 +681,7 @@ def charts_precios(df):
                 error_y=dict(type="data", symmetric=False,
                              array=[r["max"] - r["mean"]],
                              arrayminus=[r["mean"] - r["min"]]),
-                text=[f"{r['mean']:,.0f}€"], textposition="outside",
+                text=[eur(r["mean"])], textposition="outside",
             ))
         fig.update_layout(
             title="Precio medio por marca (con rango)",
@@ -686,6 +690,7 @@ def charts_precios(df):
             margin=dict(l=8,r=8,t=36,b=8),
             font=dict(family="Inter", size=11),
             paper_bgcolor="white", plot_bgcolor="white",
+            separators=",.",
         )
         st.plotly_chart(fig, width="stretch")
 
@@ -708,7 +713,7 @@ def charts_precios(df):
                       title="Precio medio — top 15 modelos (≥3 uds.)",
                       labels={"mean":"Precio medio (€)","Modelo_norm":""},
                       color="mean", color_continuous_scale=["#bfdbfe","#1c69d4"],
-                      text=grp["mean"].map(lambda x: f"{x:,.0f}€"))
+                      text=grp["mean"].map(eur))
         fig3.update_traces(textposition="outside", textfont_size=10)
         fig3.update_layout(coloraxis_showscale=False, yaxis=dict(autorange="reversed", tickfont_size=10))
         st.plotly_chart(fig_base(fig3, 400), width="stretch")
@@ -745,7 +750,7 @@ def charts_cuotas(df):
         fig = px.bar(gb, x="Marca", y="Cuota_mes", color="Marca",
                      color_discrete_map=COLORS,
                      title="Cuota mensual media por marca",
-                     text=gb["Cuota_mes"].map(lambda x: f"{x:.0f}€/mes"),
+                     text=gb["Cuota_mes"].map(eu_mes),
                      labels={"Cuota_mes":"€/mes"})
         fig.update_traces(textposition="outside")
         fig.update_layout(showlegend=False)
@@ -769,7 +774,7 @@ def charts_cuotas(df):
                       title="Cuota media más baja — top 15 modelos",
                       labels={"mean":"€/mes","Modelo_norm":""},
                       color="mean", color_continuous_scale=["#1c69d4","#bfdbfe"],
-                      text=grp["mean"].map(lambda x: f"{x:.0f}€"))
+                      text=grp["mean"].map(eur))
         fig3.update_traces(textposition="outside", textfont_size=10)
         fig3.update_layout(coloraxis_showscale=False, yaxis=dict(tickfont_size=10))
         st.plotly_chart(fig_base(fig3, 380), width="stretch")
@@ -791,7 +796,7 @@ def charts_cuotas(df):
             fig5 = px.bar(gb_t, x="Marca", y="TAE", color="Marca",
                           color_discrete_map=COLORS,
                           title="TAE media por marca (%)",
-                          text=gb_t["TAE"].map(lambda x: f"{x:.2f}%"),
+                          text=gb_t["TAE"].map(lambda x: pct_val(x, 2)),
                           labels={"TAE":"TAE (%)"})
             fig5.update_traces(textposition="outside")
             fig5.update_layout(showlegend=False)
@@ -822,16 +827,16 @@ def comparador(df):
         top_dealer= sub["Concesionario"].value_counts().idxmax() if "Concesionario" in sub.columns and not sub["Concesionario"].isna().all() else "—"
         rows.append({
             "Modelo":             m,
-            "Stock total":        len(sub),
-            "Con precio":         len(pvp),
-            "Con cuota":          len(cuota),
-            "Precio medio (€)":   f"{pvp.mean():,.0f}"  if len(pvp)   else "—",
-            "Precio mín. (€)":    f"{pvp.min():,.0f}"   if len(pvp)   else "—",
-            "Precio máx. (€)":    f"{pvp.max():,.0f}"   if len(pvp)   else "—",
-            "Cuota media (€/mes)":f"{cuota.mean():,.0f}" if len(cuota) else "—",
-            "Cuota mín. (€/mes)": f"{cuota.min():,.0f}"  if len(cuota) else "—",
-            "Cuota máx. (€/mes)": f"{cuota.max():,.0f}"  if len(cuota) else "—",
-            "TAE media (%)":      f"{tae.mean():.2f}"   if len(tae)   else "—",
+            "Stock total":        eu_num(len(sub)),
+            "Con precio":         eu_num(len(pvp)),
+            "Con cuota":          eu_num(len(cuota)),
+            "Precio medio (€)":   eur(pvp.mean())   if len(pvp)   else "—",
+            "Precio mín. (€)":    eur(pvp.min())    if len(pvp)   else "—",
+            "Precio máx. (€)":    eur(pvp.max())    if len(pvp)   else "—",
+            "Cuota media (€/mes)":eu_mes(cuota.mean()) if len(cuota) else "—",
+            "Cuota mín. (€/mes)": eu_mes(cuota.min())  if len(cuota) else "—",
+            "Cuota máx. (€/mes)": eu_mes(cuota.max())  if len(cuota) else "—",
+            "TAE media (%)":      f"{tae.mean():.2f}%".replace(".", ",") if len(tae) else "—",
             "Combustible frec.":  top_fuel,
             "Dealer principal":   top_dealer,
         })
@@ -855,7 +860,7 @@ def comparador(df):
         if not d.empty:
             fig = px.bar(d, x="Modelo", y="Precio medio", color="Modelo",
                          title="Precio medio por modelo",
-                         text=d["Precio medio"].map(lambda x: f"{x:,.0f}€"),
+                         text=d["Precio medio"].map(eur),
                          labels={"Precio medio":"€"})
             fig.update_traces(textposition="outside")
             fig.update_layout(showlegend=False)
@@ -866,7 +871,7 @@ def comparador(df):
         if not d2.empty:
             fig2 = px.bar(d2, x="Modelo", y="Cuota media", color="Modelo",
                           title="Cuota mensual media por modelo",
-                          text=d2["Cuota media"].map(lambda x: f"{x:.0f}€/mes"),
+                          text=d2["Cuota media"].map(eu_mes),
                           labels={"Cuota media":"€/mes"})
             fig2.update_traces(textposition="outside")
             fig2.update_layout(showlegend=False)
@@ -886,9 +891,9 @@ def comparador(df):
         st.markdown(
             f'<div class="insight-item">'
             f'<span class="insight-tag">COMPARATIVA</span>'
-            f'{m_min} tiene el precio medio más bajo ({p_min:,.0f} €). '
-            f'{m_max} es el más caro ({p_max:,.0f} €). '
-            f'Diferencia: <strong>{diff:,.0f} €</strong> ({pct_v:.1f}%).'
+            f'{m_min} tiene el precio medio más bajo ({eur(p_min)}). '
+            f'{m_max} es el más caro ({eur(p_max)}). '
+            f'Diferencia: <strong>{eur(diff)}</strong> ({pct_val(pct_v)}).'
             f'</div>',
             unsafe_allow_html=True,
         )
@@ -915,7 +920,7 @@ def tabla_vehiculos(df):
         ).any(axis=1)
         df_show = df_show[mask]
 
-    st.caption(f"{len(df_show):,} vehículos")
+    st.caption(f"{eu_num(len(df_show))} vehículos")
 
     # Construir HTML de tabla
     col_labels = {
@@ -942,10 +947,12 @@ def tabla_vehiculos(df):
                     cells += f'<td><a href="{v}" target="_blank" style="color:#1c69d4;text-decoration:none;">Ver anuncio</a></td>'
                 else:
                     cells += "<td>—</td>"
-            elif c in ("PVP","Cuota_mes","Entrada","Cuota_final"):
-                cells += f"<td>{f'{v:,.0f}' if pd.notna(v) else '—'}</td>"
+            elif c == "PVP":
+                cells += f"<td>{eur(v)}</td>"
+            elif c in ("Cuota_mes","Entrada","Cuota_final"):
+                cells += f"<td>{eu_mes(v) if c == 'Cuota_mes' else eur(v)}</td>"
             elif c in ("TAE","TIN"):
-                cells += f"<td>{f'{v:.2f}%' if pd.notna(v) else '—'}</td>"
+                cells += f"<td>{f'{v:.2f}%'.replace('.', ',') if pd.notna(v) else '—'}</td>"
             elif c == "Año":
                 cells += f"<td>{int(v) if pd.notna(v) else '—'}</td>"
             else:
@@ -961,9 +968,20 @@ def tabla_vehiculos(df):
     )
     st.markdown(html, unsafe_allow_html=True)
 
-    # Exportar
+    # Exportar con formato europeo para lectura en Excel/Sheets.
     st.markdown("<br>", unsafe_allow_html=True)
-    csv = df[display_cols].to_csv(index=False).encode("utf-8")
+    df_export = df[display_cols].copy()
+    for c in ["PVP", "Entrada", "Cuota_final"]:
+        if c in df_export.columns:
+            df_export[c] = df_export[c].map(eur)
+    if "Cuota_mes" in df_export.columns:
+        df_export["Cuota_mes"] = df_export["Cuota_mes"].map(eu_mes)
+    for c in ["TAE", "TIN"]:
+        if c in df_export.columns:
+            df_export[c] = df_export[c].map(lambda x: pct_val(x, 2))
+    if "Año" in df_export.columns:
+        df_export["Año"] = df_export["Año"].map(lambda x: eu_num(x, 0) if pd.notna(x) else "—")
+    csv = df_export.to_csv(index=False, sep=";").encode("utf-8-sig")
     st.download_button("Descargar CSV", csv, "stock_filtrado.csv", "text/csv")
 
 # ─────────────────────────────────────────────────────────────
@@ -980,28 +998,28 @@ def show_insights(df):
     items.append(
         f'<span class="insight-tag">STOCK</span>'
         f'La marca con más unidades anunciadas es <strong>{top_marca.idxmax()}</strong> '
-        f'con {top_marca.max():,} vehículos ({top_marca.max()/total*100:.1f}% del total).'
+        f'con {eu_num(top_marca.max())} vehículos ({pct(top_marca.max(), total)} del total).'
     )
 
     top_mod = df["Modelo_norm"].value_counts()
     items.append(
         f'<span class="insight-tag">MODELO</span>'
         f'El modelo con mayor stock es <strong>{top_mod.idxmax()}</strong> '
-        f'con {top_mod.max():,} unidades.'
+        f'con {eu_num(top_mod.max())} unidades.'
     )
 
     if not pvp_s.empty:
         grp_pvp = df[df["PVP"].notna()].groupby("Modelo_norm")["PVP"].mean()
         items.append(
             f'<span class="insight-tag">PRECIO</span>'
-            f'Precio medio general: <strong>{pvp_s.mean():,.0f} €</strong>. '
-            f'Modelo más caro en media: <strong>{grp_pvp.idxmax()}</strong> ({grp_pvp.max():,.0f} €). '
-            f'Modelo más económico: <strong>{grp_pvp.idxmin()}</strong> ({grp_pvp.min():,.0f} €).'
+            f'Precio medio general: <strong>{eur(pvp_s.mean())}</strong>. '
+            f'Modelo más caro en media: <strong>{grp_pvp.idxmax()}</strong> ({eur(grp_pvp.max())}). '
+            f'Modelo más económico: <strong>{grp_pvp.idxmin()}</strong> ({eur(grp_pvp.min())}).'
         )
         items.append(
             f'<span class="insight-tag">PRECIO</span>'
-            f'El {len(pvp_s)/total*100:.1f}% del stock tiene precio informado '
-            f'({len(pvp_s):,} de {total:,} vehículos).'
+            f'El {pct(len(pvp_s), total)} del stock tiene precio informado '
+            f'({eu_num(len(pvp_s))} de {eu_num(total)} vehículos).'
         )
 
     if not cuota_s.empty:
@@ -1009,16 +1027,16 @@ def show_insights(df):
         marca_cuota = df[df["Cuota_mes"].notna()].groupby("Marca")["Cuota_mes"].mean()
         items.append(
             f'<span class="insight-tag">CUOTA</span>'
-            f'Cuota media: <strong>{cuota_s.mean():,.0f} €/mes</strong>. '
+            f'Cuota media: <strong>{eu_mes(cuota_s.mean())}</strong>. '
             f'La cuota media más baja por modelo corresponde a <strong>{grp_cuota.idxmin()}</strong> '
-            f'({grp_cuota.min():,.0f} €/mes). '
+            f'({eu_mes(grp_cuota.min())}). '
             f'La marca con cuota media más baja es <strong>{marca_cuota.idxmin()}</strong> '
-            f'({marca_cuota.min():,.0f} €/mes).'
+            f'({eu_mes(marca_cuota.min())}).'
         )
         items.append(
             f'<span class="insight-tag">CUOTA</span>'
-            f'El {len(cuota_s)/total*100:.1f}% del stock tiene cuota mensual informada '
-            f'({len(cuota_s):,} de {total:,} vehículos).'
+            f'El {pct(len(cuota_s), total)} del stock tiene cuota mensual informada '
+            f'({eu_num(len(cuota_s))} de {eu_num(total)} vehículos).'
         )
 
     if "Ciudad" in df.columns and df["Ciudad"].notna().any():
@@ -1026,28 +1044,28 @@ def show_insights(df):
         items.append(
             f'<span class="insight-tag">GEOGRAFIA</span>'
             f'La ciudad con mayor concentración de stock es <strong>{top_c.idxmax()}</strong> '
-            f'({top_c.max():,} vehículos).'
+            f'({eu_num(top_c.max())} vehículos).'
         )
 
     if "Provincia" in df.columns and df["Provincia"].notna().any():
         top_p = df["Provincia"].value_counts()
         items.append(
             f'<span class="insight-tag">GEOGRAFIA</span>'
-            f'Provincia con más stock: <strong>{top_p.idxmax()}</strong> ({top_p.max():,} uds.).'
+            f'Provincia con más stock: <strong>{top_p.idxmax()}</strong> ({eu_num(top_p.max())} uds.).'
         )
 
     top_d = df["Concesionario"].value_counts()
     items.append(
         f'<span class="insight-tag">DEALER</span>'
         f'El concesionario con mayor volumen de vehículos anunciados es '
-        f'<strong>{top_d.idxmax()}</strong> con {top_d.max():,} unidades.'
+        f'<strong>{top_d.idxmax()}</strong> con {eu_num(top_d.max())} unidades.'
     )
 
     top_fuel = df["Fuel_type"].value_counts()
     items.append(
         f'<span class="insight-tag">COMBUSTIBLE</span>'
         f'El tipo de propulsión más frecuente en el stock es <strong>{top_fuel.idxmax()}</strong> '
-        f'({top_fuel.max():,} uds., {top_fuel.max()/total*100:.1f}%).'
+        f'({eu_num(top_fuel.max())} uds., {pct(top_fuel.max(), total)}).'
     )
 
     for item in items:
@@ -1064,28 +1082,28 @@ def _responder(q: str, df: pd.DataFrame) -> str:
 
     # Resumen general
     if re.search(r"resumen|total.*stock|cuántos.*coches|cuántos.*vehíc|stock.*total|stock.*actual", q_l):
-        marcas_str = " | ".join([f"{m}: {n:,}" for m, n in df["Marca"].value_counts().items()])
+        marcas_str = " | ".join([f"{m}: {eu_num(n)}" for m, n in df["Marca"].value_counts().items()])
         return (
-            f"**Resumen del stock actual ({total:,} vehículos)**\n\n"
+            f"**Resumen del stock actual ({eu_num(total)} vehículos)**\n\n"
             f"- Por marca: {marcas_str}\n"
-            f"- Con precio informado: {len(pvp_s):,} ({len(pvp_s)/total*100:.1f}%)\n"
-            f"- Con cuota mensual: {len(cuota_s):,} ({len(cuota_s)/total*100:.1f}%)\n"
-            f"- Precio medio: {pvp_s.mean():,.0f} €\n"
-            f"- Cuota mensual media: {cuota_s.mean():,.0f} €/mes" if len(cuota_s) else ""
+            f"- Con precio informado: {eu_num(len(pvp_s))} ({pct(len(pvp_s), total)})\n"
+            f"- Con cuota mensual: {eu_num(len(cuota_s))} ({pct(len(cuota_s), total)})\n"
+            f"- Precio medio: {eur(pvp_s.mean())}\n"
+            f"- Cuota mensual media: {eu_mes(cuota_s.mean())}" if len(cuota_s) else ""
         )
 
     # Marca con más stock
     if re.search(r"marca.*más.*stock|mayor.*stock.*marca|qué.*marca.*más", q_l):
         top = df["Marca"].value_counts()
-        lines = "\n".join([f"- {m}: {n:,}" for m, n in top.items()])
-        return f"**Stock por marca:**\n\n{lines}\n\nLíder: **{top.idxmax()}** con {top.max():,} unidades."
+        lines = "\n".join([f"- {m}: {eu_num(n)}" for m, n in top.items()])
+        return f"**Stock por marca:**\n\n{lines}\n\nLíder: **{top.idxmax()}** con {eu_num(top.max())} unidades."
 
     # Precio más bajo / económico
     if re.search(r"precio.*bajo|más.*económico|más barato|menor.*precio|precio.*mínimo", q_l):
         if pvp_s.empty:
             return "No hay datos de precio con los filtros actuales."
         grp = df[df["PVP"].notna()].groupby("Modelo_norm")["PVP"].mean().sort_values().head(5)
-        lines = "\n".join([f"- **{m}:** {v:,.0f} €" for m, v in grp.items()])
+        lines = "\n".join([f"- **{m}:** {eur(v)}" for m, v in grp.items()])
         return f"**Modelos con precio medio más bajo:**\n\n{lines}"
 
     # Precio más alto / caro
@@ -1093,7 +1111,7 @@ def _responder(q: str, df: pd.DataFrame) -> str:
         if pvp_s.empty:
             return "No hay datos de precio disponibles."
         grp = df[df["PVP"].notna()].groupby("Modelo_norm")["PVP"].mean().sort_values(ascending=False).head(5)
-        lines = "\n".join([f"- **{m}:** {v:,.0f} €" for m, v in grp.items()])
+        lines = "\n".join([f"- **{m}:** {eur(v)}" for m, v in grp.items()])
         return f"**Modelos con precio medio más alto:**\n\n{lines}"
 
     # Cuota inferior a X
@@ -1103,17 +1121,17 @@ def _responder(q: str, df: pd.DataFrame) -> str:
             limit = int(nums[0])
             sub = df[df["Cuota_mes"].notna() & (df["Cuota_mes"] <= limit)]
             if sub.empty:
-                return f"No hay vehículos con cuota ≤ {limit} €/mes con los filtros actuales."
+                return f"No hay vehículos con cuota ≤ {eu_mes(limit)} con los filtros actuales."
             grp = sub.groupby(["Marca","Modelo_norm"])["Cuota_mes"].agg(["count","mean"]).reset_index().sort_values("mean")
             lines = "\n".join([
-                f"- **{r['Modelo_norm']}** ({r['Marca']}): {r['mean']:.0f} €/mes — {int(r['count'])} uds."
+                f"- **{r['Modelo_norm']}** ({r['Marca']}): {eu_mes(r['mean'])} — {eu_num(int(r['count']))} uds."
                 for _, r in grp.head(10).iterrows()
             ])
-            return f"**{len(sub):,} vehículos con cuota ≤ {limit} €/mes:**\n\n{lines}"
+            return f"**{eu_num(len(sub))} vehículos con cuota ≤ {eu_mes(limit)}:**\n\n{lines}"
         if cuota_s.empty:
             return "No hay datos de cuota mensual disponibles."
         grp = df[df["Cuota_mes"].notna()].groupby("Modelo_norm")["Cuota_mes"].mean().sort_values().head(5)
-        lines = "\n".join([f"- **{m}:** {v:.0f} €/mes" for m, v in grp.items()])
+        lines = "\n".join([f"- **{m}:** {eu_mes(v)}" for m, v in grp.items()])
         return f"**Modelos con cuota mensual media más baja:**\n\n{lines}"
 
     # Comparativa entre modelos
@@ -1128,9 +1146,9 @@ def _responder(q: str, df: pd.DataFrame) -> str:
                 sub = df[df["Modelo_norm"] == m]
                 p = sub["PVP"].dropna()      if "PVP"      in sub.columns else pd.Series()
                 c = sub["Cuota_mes"].dropna() if "Cuota_mes" in sub.columns else pd.Series()
-                pvp_str   = f"{p.mean():,.0f} €"   if len(p) else "sin precio"
-                cuota_str = f"{c.mean():.0f} €/mes" if len(c) else "sin cuota"
-                resp += f"- **{m}** — {len(sub):,} uds. | Precio: {pvp_str} | Cuota: {cuota_str}\n"
+                pvp_str   = eur(p.mean())   if len(p) else "sin precio"
+                cuota_str = eu_mes(c.mean()) if len(c) else "sin cuota"
+                resp += f"- **{m}** — {eu_num(len(sub))} uds. | Precio: {pvp_str} | Cuota: {cuota_str}\n"
             if len(encontrados) == 2:
                 p0 = df[df["Modelo_norm"]==encontrados[0]]["PVP"].dropna()
                 p1 = df[df["Modelo_norm"]==encontrados[1]]["PVP"].dropna()
@@ -1138,7 +1156,7 @@ def _responder(q: str, df: pd.DataFrame) -> str:
                     diff = abs(p0.mean()-p1.mean())
                     pct_v = diff/min(p0.mean(),p1.mean())*100
                     mas_caro = encontrados[0] if p0.mean() > p1.mean() else encontrados[1]
-                    resp += f"\nDiferencia de precio: **{diff:,.0f} €** ({pct_v:.1f}%). El más caro: **{mas_caro}**."
+                    resp += f"\nDiferencia de precio: **{eur(diff)}** ({pct_val(pct_v)}). El más caro: **{mas_caro}**."
             return resp
         return "Indica los modelos a comparar. Ejemplo: 'Compara BMW Serie 1 con Audi A3'."
 
@@ -1152,27 +1170,27 @@ def _responder(q: str, df: pd.DataFrame) -> str:
             limit = float(nums[0]) * 1000 if float(nums[0]) < 1000 else float(nums[0])
             sub2 = sub[sub["PVP"].notna() & (sub["PVP"] <= limit)] if "PVP" in sub.columns else sub
             top_m = sub2["Modelo_norm"].value_counts().head(8)
-            lines = "\n".join([f"- **{m}:** {n} uds." for m, n in top_m.items()])
-            return f"**{len(sub2):,} eléctricos con precio ≤ {limit:,.0f} €:**\n\n{lines}"
+            lines = "\n".join([f"- **{m}:** {eu_num(n)} uds." for m, n in top_m.items()])
+            return f"**{eu_num(len(sub2))} eléctricos con precio ≤ {eur(limit)}:**\n\n{lines}"
         top_m = sub["Modelo_norm"].value_counts().head(8)
-        lines = "\n".join([f"- **{m}:** {n}" for m, n in top_m.items()])
-        return f"**{len(sub):,} vehículos eléctricos (BEV) en el stock:**\n\n{lines}"
+        lines = "\n".join([f"- **{m}:** {eu_num(n)}" for m, n in top_m.items()])
+        return f"**{eu_num(len(sub))} vehículos eléctricos (BEV) en el stock:**\n\n{lines}"
 
     # Dealers
     if re.search(r"dealer|concesionario|distribuid", q_l):
         top = df["Concesionario"].value_counts().head(8)
-        lines = "\n".join([f"- **{d}:** {n:,} uds." for d, n in top.items()])
+        lines = "\n".join([f"- **{d}:** {eu_num(n)} uds." for d, n in top.items()])
         return f"**Top 8 concesionarios por stock:**\n\n{lines}"
 
     # Provincia / ciudad
     if re.search(r"provincia|ciudad|ubicación|zona|región|donde|dónde", q_l):
         if "Provincia" in df.columns and df["Provincia"].notna().any():
             top = df["Provincia"].value_counts().head(8)
-            lines = "\n".join([f"- **{p}:** {n:,}" for p, n in top.items()])
+            lines = "\n".join([f"- **{p}:** {eu_num(n)}" for p, n in top.items()])
             return f"**Stock por provincia (top 8):**\n\n{lines}"
         if "Ciudad" in df.columns and df["Ciudad"].notna().any():
             top = df["Ciudad"].value_counts().head(8)
-            lines = "\n".join([f"- **{c}:** {n:,}" for c, n in top.items()])
+            lines = "\n".join([f"- **{c}:** {eu_num(n)}" for c, n in top.items()])
             return f"**Stock por ciudad (top 8):**\n\n{lines}"
 
     # Búsqueda de modelo específico
@@ -1181,15 +1199,15 @@ def _responder(q: str, df: pd.DataFrame) -> str:
             sub = df[df["Modelo_norm"] == modelo]
             p = sub["PVP"].dropna()      if "PVP"      in sub.columns else pd.Series()
             c = sub["Cuota_mes"].dropna() if "Cuota_mes" in sub.columns else pd.Series()
-            resp = f"**{modelo}** — {len(sub):,} vehículos\n\n"
+            resp = f"**{modelo}** — {eu_num(len(sub))} vehículos\n\n"
             if len(p):
-                resp += f"- Precio medio: **{p.mean():,.0f} €** (mín {p.min():,.0f} € · máx {p.max():,.0f} €)\n"
-                resp += f"- Con precio informado: {len(p)} de {len(sub)}\n"
+                resp += f"- Precio medio: **{eur(p.mean())}** (mín {eur(p.min())} · máx {eur(p.max())})\n"
+                resp += f"- Con precio informado: {eu_num(len(p))} de {eu_num(len(sub))}\n"
             if len(c):
-                resp += f"- Cuota media: **{c.mean():.0f} €/mes** (mín {c.min():.0f} € · máx {c.max():.0f} €)\n"
-                resp += f"- Con cuota informada: {len(c)} de {len(sub)}\n"
+                resp += f"- Cuota media: **{eu_mes(c.mean())}** (mín {eu_mes(c.min())} · máx {eu_mes(c.max())})\n"
+                resp += f"- Con cuota informada: {eu_num(len(c))} de {eu_num(len(sub))}\n"
             top_d = sub["Concesionario"].value_counts().head(3)
-            resp += "\nPrincipales dealers: " + ", ".join([f"{d} ({n})" for d, n in top_d.items()])
+            resp += "\nPrincipales dealers: " + ", ".join([f"{d} ({eu_num(n)})" for d, n in top_d.items()])
             return resp
 
     # Precio y cuota a la vez
@@ -1198,8 +1216,8 @@ def _responder(q: str, df: pd.DataFrame) -> str:
         if sub.empty:
             return "No hay vehículos con precio total y cuota mensual a la vez con los filtros actuales."
         top = sub.groupby("Modelo_norm").size().sort_values(ascending=False).head(8)
-        lines = "\n".join([f"- **{m}:** {n}" for m, n in top.items()])
-        return f"**{len(sub):,} vehículos con precio total Y cuota mensual disponibles:**\n\n{lines}"
+        lines = "\n".join([f"- **{m}:** {eu_num(n)}" for m, n in top.items()])
+        return f"**{eu_num(len(sub))} vehículos con precio total Y cuota mensual disponibles:**\n\n{lines}"
 
     # Sin match
     return (
@@ -1217,7 +1235,7 @@ def show_chatbot(df):
     if "chat_msgs" not in st.session_state:
         st.session_state.chat_msgs = [
             {"role": "bot", "text":
-             f"Stock cargado: **{len(df):,} vehículos**. "
+             f"Stock cargado: **{eu_num(len(df))} vehículos**. "
              "Puedes preguntarme sobre precios, cuotas, modelos, concesionarios o cualquier dato del dataset."}
         ]
 

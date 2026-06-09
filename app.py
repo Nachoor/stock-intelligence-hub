@@ -661,14 +661,13 @@ def sidebar_filters(df):
 
         marcas     = msel("Marca",          "Marca")
         mercados   = msel("Mercado",        "Mercado")
-        modelos    = msel("Modelo normalizado", "Modelo_norm")
-        versiones  = msel("Versión / acabado", "Versión")
+        modelos    = msel("Modelo",        "Modelo_norm")
+        versiones  = msel("Versión",       "Versión")
         fuels      = msel("Combustible",    "Fuel_type")
         carros     = msel("Carrocería",     "Carrocería")
         dealers    = msel("Concesionario",  "Concesionario")
         ciudades   = msel("Ciudad",         "Ciudad")
         provincias = msel("Provincia",      "Provincia")
-        estados    = msel("Estado",         "Estado")
 
         st.markdown("---")
 
@@ -702,7 +701,7 @@ def sidebar_filters(df):
     for col, sel in [
         ("Marca", marcas), ("Mercado", mercados), ("Modelo_norm", modelos), ("Versión", versiones),
         ("Fuel_type", fuels), ("Carrocería", carros), ("Concesionario", dealers),
-        ("Ciudad", ciudades), ("Provincia", provincias), ("Estado", estados),
+        ("Ciudad", ciudades), ("Provincia", provincias),
     ]:
         if sel and col in df.columns:
             mask &= df[col].isin(sel)
@@ -1545,13 +1544,6 @@ def main():
         st.markdown('<div class="section-header">Asistente analitico</div>', unsafe_allow_html=True)
         st.caption("El asistente responde calculando directamente sobre los datos filtrados.")
         show_chatbot(df)
-
-    st.markdown(
-        '<div style="text-align:center;padding:24px 0 8px;color:#94a3b8;font-size:11px;">' +
-        'Stock Intelligence Hub · BMW Group · Datos: STOCK_UNIFICADO_GLOBAL.csv' +
-        '</div>',
-        unsafe_allow_html=True,
-    )
 
 
 if __name__ == "__main__":

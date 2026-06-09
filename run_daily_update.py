@@ -18,7 +18,7 @@ SCRAPERS = [
     ("PT Mercedes-Benz", BASE_DIR / "PT_MARKET", "mercedes_scraper_pt.py"),
 ]
 
-SCRAPER_TIMEOUT_SECONDS = 45 * 60
+SCRAPER_TIMEOUT_SECONDS = 120 * 60
 BUILD_TIMEOUT_SECONDS = 10 * 60
 
 

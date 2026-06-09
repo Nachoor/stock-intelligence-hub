@@ -11,6 +11,7 @@ import plotly.graph_objects as go
 from pathlib import Path
 import base64
 import re
+import unicodedata
 
 # ─────────────────────────────────────────────────────────────
 # CONFIGURACIÓN DE PÁGINA
@@ -298,6 +299,62 @@ def _safe_excel(path):
     except Exception:
         return None
 
+_BRAND_PREFIX = re.compile(r"^(Mercedes(?:-Benz)?|BMW|Audi|MINI)\s+", re.IGNORECASE)
+_BMW_SERIES_KEY_RE = re.compile(
+    r"^(?:serie|series)\s+([1-8])\b|^([1-8])\s+(?:series?|active tourer|gran tourer|gran coupe|coup[eé]|cabrio|berlina|touring)\b",
+    re.IGNORECASE,
+)
+_MERCEDES_CLASS_MAP = {
+    "a": "Clase A", "b": "Clase B", "c": "Clase C", "e": "Clase E", "s": "Clase S",
+    "g": "Clase G", "t": "Clase T", "v": "Clase V",
+    "cla": "Clase CLA", "cle": "Clase CLE", "cls": "Clase CLS",
+    "gla": "Clase GLA", "glb": "Clase GLB", "glc": "Clase GLC", "gle": "Clase GLE",
+    "gls": "Clase GLS", "sl": "Clase SL",
+}
+_MERCEDES_CLASS_RE = re.compile(r"^(?:clase|class)\s+([a-z0-9]+)$|^([a-z0-9]+)\s*[- ]?\s*class$", re.IGNORECASE)
+
+def _norm_key(value):
+    s = unicodedata.normalize("NFD", str(value or ""))
+    s = "".join(c for c in s if unicodedata.category(c) != "Mn")
+    return re.sub(r"\s+", " ", s).strip().lower()
+
+def clean_model_name(value):
+    model = re.sub(r"\s+", " ", str(value or "")).strip()
+    if not model:
+        return ""
+    model = _BRAND_PREFIX.sub("", model).strip()
+    key = _norm_key(model)
+
+    bm = _BMW_SERIES_KEY_RE.match(key)
+    if bm:
+        return f"Serie {bm.group(1) or bm.group(2)}"
+
+    mc = _MERCEDES_CLASS_RE.match(key)
+    if mc:
+        code = (mc.group(1) or mc.group(2) or "").lower()
+        return _MERCEDES_CLASS_MAP.get(code, f"Clase {code.upper()}")
+    if key in _MERCEDES_CLASS_MAP:
+        return _MERCEDES_CLASS_MAP[key]
+
+    return model.replace("Série", "Serie")
+
+def _post_normalize(df):
+    df = df.copy()
+    if "Modelo" in df.columns:
+        df["Modelo"] = df["Modelo"].map(clean_model_name)
+        df["Modelo_norm"] = df["Modelo"]
+    elif "Modelo_norm" in df.columns:
+        df["Modelo_norm"] = df["Modelo_norm"].map(clean_model_name)
+        df["Modelo"] = df["Modelo_norm"]
+
+    for c in ["PVP", "Cuota_mes", "TAE", "TIN", "Año"]:
+        if c in df.columns:
+            df[c] = pd.to_numeric(df[c], errors="coerce")
+    for c in ["Marca", "Mercado", "Modelo_norm", "Modelo", "Fuel_type", "Carrocería", "Concesionario", "Ciudad", "Provincia"]:
+        if c in df.columns:
+            df[c] = df[c].fillna("").astype(str).str.strip()
+    return df
+
 def _norm_csv(df):
     """Normaliza el CSV recuperado del GLOBAL (columnas en inglés)."""
     df = df.copy()
@@ -326,10 +383,7 @@ def _norm_csv(df):
     for c in ["TIN","Entrada","Plazo","Cuota_final","Km_año"]:
         if c not in df.columns:
             df[c] = np.nan
-    for c in ["PVP","Cuota_mes","TAE","Año"]:
-        if c in df.columns:
-            df[c] = pd.to_numeric(df[c], errors="coerce")
-    return df
+    return _post_normalize(df)
 
 def _norm_es(df, mercado="ES"):
     df = df.copy()
@@ -349,7 +403,7 @@ def _norm_es(df, mercado="ES"):
     for c in ["TIN","Entrada","Plazo","Cuota_final","Km_año","Provincia","Color","Estado"]:
         if c not in df.columns:
             df[c] = np.nan
-    return df
+    return _post_normalize(df)
 
 def _norm_pt(df, mercado="PT"):
     df = df.copy()
@@ -377,7 +431,7 @@ def _norm_pt(df, mercado="PT"):
     for c in ["TIN","Entrada","Plazo","Cuota_final","Km_año","Int_Color"]:
         if c not in df.columns:
             df[c] = np.nan
-    return df
+    return _post_normalize(df)
 
 @st.cache_data(show_spinner="Cargando datos...")
 def load_data():
@@ -391,8 +445,8 @@ def load_data():
     # 2. XLSX global (si no está bloqueado por Excel)
     df_g = _safe_excel(BASE / "STOCK_UNIFICADO_GLOBAL.xlsx")
     if df_g is not None and len(df_g) > 100:
-        if "Mercado" not in df_g.columns:
-            df_g["Mercado"] = "ES"
+        if "Market" in df_g.columns or "Brand" in df_g.columns:
+            return _norm_csv(df_g)
         return _norm_es(df_g)
 
     # 3. Fallback: combinar ES + PT
@@ -409,10 +463,7 @@ def load_data():
         st.stop()
 
     df = pd.concat(frames, ignore_index=True)
-    for c in ["PVP","Cuota_mes","TAE","TIN"]:
-        if c in df.columns:
-            df[c] = pd.to_numeric(df[c], errors="coerce")
-    return df
+    return _post_normalize(df)
 
 # ─────────────────────────────────────────────────────────────
 # HEADER

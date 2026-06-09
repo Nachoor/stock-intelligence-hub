@@ -506,6 +506,18 @@ def normalize_rows(path: Path, brand: str, market: str) -> list[dict]:
     return rows
 
 
+def deduplicate_stock(df: pd.DataFrame) -> pd.DataFrame:
+    """Remove only true duplicate listings, preserving identical cars with different URLs."""
+    has_url = df["URL"].notna() & df["URL"].astype(str).str.strip().ne("")
+    duplicate_url = has_url & df.duplicated(["Market", "Brand", "URL"], keep="first")
+    duplicate_exact_no_url = ~has_url & df.duplicated(keep="first")
+    duplicate_mask = duplicate_url | duplicate_exact_no_url
+    removed = int(duplicate_mask.sum())
+    if removed:
+        print(f"Removed {removed} duplicate stock rows by Market+Brand+URL")
+    return df.loc[~duplicate_mask].reset_index(drop=True)
+
+
 def build() -> pd.DataFrame:
     sources = [
         (ES_DIR / "STOCK_BMW.xlsx", "BMW", "ES"),
@@ -520,6 +532,7 @@ def build() -> pd.DataFrame:
         rows.extend(normalize_rows(path, brand, market))
 
     df = pd.DataFrame(rows, columns=UNIFIED_COLUMNS)
+    df = deduplicate_stock(df)
     if len(df) < 1000:
         raise RuntimeError(f"Refusing to write dataset with too few rows: {len(df)}")
     if df["Brand"].nunique() < 3 or df["Market"].nunique() < 2:

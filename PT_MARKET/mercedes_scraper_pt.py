@@ -45,7 +45,7 @@ START_URL = (
 )
 OUT_XLSX     = "STOCK_MERCEDES_PT.xlsx"
 PAGE_SIZE    = 12    # MB default limit per GraphQL page
-CAPTURE_WAIT = 40   # seconds to wait for GraphQL request to be captured
+CAPTURE_WAIT = 60   # seconds to wait for GraphQL request to be captured
 
 # ═══════════════════════════════════════════════════════
 # COLUMN DEFINITIONS
@@ -630,6 +630,19 @@ async def scrape_mercedes_async():
                 await page.wait_for_timeout(1000)
                 if i % 5 == 4:
                     await page.evaluate("window.scrollBy(0, 400)")
+
+            if not captured_gql:
+                print("  Not captured yet, reloading page and retrying...")
+                await page.reload(wait_until="domcontentloaded", timeout=120000)
+                await page.wait_for_timeout(3000)
+                await accept_cookies_async(page)
+                await page.wait_for_timeout(2000)
+                for i in range(CAPTURE_WAIT):
+                    if captured_gql:
+                        break
+                    await page.wait_for_timeout(1000)
+                    if i % 5 == 4:
+                        await page.evaluate("window.scrollBy(0, 400)")
 
             if not captured_gql:
                 print("  GraphQL request not captured. Check the browser manually.")

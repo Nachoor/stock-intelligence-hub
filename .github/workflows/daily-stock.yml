@@ -3,8 +3,8 @@ name: Daily stock update
 on:
   workflow_dispatch:
   schedule:
-    # 04:00 UTC = 06:00 Europe/Madrid during daylight saving time.
-    - cron: "0 4 * * *"
+    # 02:00 UTC = 04:00 Europe/Madrid during daylight saving time (03:00 in winter).
+    - cron: "0 2 * * *"
 
 permissions:
   contents: write

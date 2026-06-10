@@ -62,7 +62,11 @@ jobs:
             echo "No dataset changes to commit."
           else
             git commit -m "Daily stock dataset update"
-            git push
+            for i in 1 2 3 4 5; do
+              git pull --rebase origin main && git push && break
+              echo "Push failed, retrying ($i)..."
+              sleep 5
+            done
           fi
 
       - name: Notify failure with GitHub issue

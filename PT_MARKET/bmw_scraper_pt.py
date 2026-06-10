@@ -114,6 +114,7 @@ def build_detail_url(v, mo, fallback_car_id):
     fabric = first_existing(*(c for c in codes if c.startswith("F")))
     options = [c for c in codes if c not in {paint, fabric}]
     model_range_code = text_value(first_existing(
+        deep_get(mo, "modelRange", "name"),
         deep_get(mo, "modelRange", "code"),
         deep_get(mo, "modelRange", "modelRangeCode"),
         v.get("modelRangeCode"),

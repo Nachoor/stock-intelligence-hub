@@ -452,9 +452,9 @@ def province_from_city(city: object) -> str:
     return ES_PROVINCES_BY_CITY.get(norm_key(city), "")
 
 
-def read_excel(path: Path) -> pd.DataFrame:
+def read_excel(path: Path) -> pd.DataFrame | None:
     if not path.exists():
-        raise FileNotFoundError(path)
+        return None
     return pd.read_excel(path, engine="openpyxl")
 
 
@@ -597,6 +597,9 @@ def _derive_version(row: pd.Series, brand_norm: str, raw_version: str) -> str:
 
 def normalize_rows(path: Path, brand: str, market: str) -> list[dict]:
     df = read_excel(path)
+    if df is None:
+        print(f"Warning: {market} {brand}: source file not found, skipping ({path.relative_to(BASE_DIR)})")
+        return []
     rows: list[dict] = []
     for _, row in df.iterrows():
         raw_model = first(row, "Carline", "Model Group", "Modelo_norm", "Model", "Modelo", "model")

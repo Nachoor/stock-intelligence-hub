@@ -1370,6 +1370,7 @@ def comparador(df):
 # TABLA DE VEHÍCULOS
 # ─────────────────────────────────────────────────────────────
 def tabla_vehiculos(df):
+    df = df.reset_index(drop=True)
     search = st.text_input("Buscar:", "", key="tabla_search",
                            placeholder="Modelo, concesionario, ciudad...")
 

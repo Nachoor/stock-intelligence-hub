@@ -6,6 +6,7 @@ from __future__ import annotations
 import json, os, re, threading
 from datetime import date, datetime
 from pathlib import Path
+from urllib.parse import urlencode
 import openpyxl
 from openpyxl.styles import Alignment, Font, PatternFill
 
@@ -19,7 +20,7 @@ COLUMNS = [
     "Fuel", "Gearbox", "Power", "Drive", "Ext. Color", "Color Code",
     "Int. Color", "Upholstery", "RRP (EUR)", "Price Label", "Monthly Rate (EUR)",
     "APR (%)", "Nominal Rate (%)", "Deposit (EUR)", "Term (months)", "Availability",
-    "Delivery Text", "Available Date", "Dealer", "City", "Dealer ID",
+    "Delivery Text", "Available Date", "Published Date", "Dealer", "City", "Dealer ID",
     "Dealer Email", "Car ID", "Campaign", "Online", "Business Model", "Car URL",
 ]
 
@@ -97,6 +98,37 @@ def normalize_money(v):
         try: return float(c)
         except ValueError: return v
     return v
+
+def build_detail_url(v, mo, fallback_car_id):
+    vss_id = text_value(first_existing(v.get("vssId"), v.get("id")))
+    config_id = text_value(deep_get(v, "internal", "vssConfigId"))
+    if not vss_id:
+        return f"https://www.bmw.pt/pt-pt/sl/stocklocator/results?vehicleId={fallback_car_id}"
+    if ":" not in config_id:
+        params = {"vehicleId": str(fallback_car_id)}
+        return "https://www.bmw.pt/pt-pt/sl/stocklocator/details/" + vss_id + "?" + urlencode(params)
+
+    model_code, raw_codes = config_id.split(":", 1)
+    codes = [c.strip() for c in raw_codes.split(",") if c.strip()]
+    paint = first_existing(*(c for c in codes if c.startswith("P")))
+    fabric = first_existing(*(c for c in codes if c.startswith("F")))
+    options = [c for c in codes if c not in {paint, fabric}]
+    model_range_code = text_value(first_existing(
+        deep_get(mo, "modelRange", "code"),
+        deep_get(mo, "modelRange", "modelRangeCode"),
+        v.get("modelRangeCode"),
+    ))
+
+    params = {"modelCode": model_code, "vehicleId": str(fallback_car_id)}
+    if paint:
+        params["paint"] = paint
+    if fabric:
+        params["fabric"] = fabric
+    if model_range_code:
+        params["modelRangeCode"] = model_range_code
+    if options:
+        params["options"] = ",".join(options)
+    return "https://www.bmw.pt/pt-pt/sl/stocklocator/details/" + vss_id + "?" + urlencode(params, safe=",")
 
 def accept_cookies(page):
     for label in ["Accept all","Aceitar tudo","Aceitar","Allow all","Confirmar"]:
@@ -191,6 +223,18 @@ def map_vehicle(hit, pricing_map=None):
 
     car_id = first_existing(
         v.get("documentId"), v.get("id"), hit.get("id"), hit.get("documentId"))
+    published_date = first_existing(
+        v.get("datePublished"),
+        v.get("publicationDate"),
+        v.get("publishedDate"),
+        v.get("listingDate"),
+        v.get("onlineSince"),
+        deep_get(v, "offering", "datePublished"),
+        deep_get(v, "offering", "publicationDate"),
+        deep_get(v, "offering", "publishedDate"),
+        deep_get(v, "offering", "listingDate"),
+        deep_get(v, "offering", "onlineSince"),
+    )
 
     rrp = normalize_money(first_existing(
         price.get("value"), price.get("amount"), price.get("grossAmount"),
@@ -255,6 +299,7 @@ def map_vehicle(hit, pricing_map=None):
         "Availability":  disponible,
         "Delivery Text": f"Expected delivery: {exp_date}" if exp_date else "",
         "Available Date": exp_date or today_str,
+        "Published Date": published_date,
         "Dealer":     text_value(first_existing(
                           retail.get("locationOutletName"),
                           distrib.get("destinationLocationDomesticDealerName"))),
@@ -266,7 +311,7 @@ def map_vehicle(hit, pricing_map=None):
         "Online":     "true" if "ONLINE" in sales_dest else "false",
         "Business Model": text_value(
                           deep_get(v,"salesProcess","type",default="dealer_stock")),
-        "Car URL":    f"https://www.bmw.pt/pt-pt/sl/stocklocator/results?vehicleId={car_id}",
+        "Car URL":    build_detail_url(v, mo, car_id),
     }
 
 def save_excel(rows, output_path):

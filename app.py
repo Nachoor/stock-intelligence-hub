@@ -266,7 +266,7 @@ footer { visibility: hidden; }
 # CONSTANTES
 # ─────────────────────────────────────────────────────────────
 BASE = Path(__file__).parent
-DATA_SCHEMA_VERSION = "2026-06-09-master-normalized-model-version-fuel-published-date-display"
+DATA_SCHEMA_VERSION = "2026-06-10-master-segment-high-performance-published-date"
 
 COLORS = {
     "BMW": "#1c69d4",
@@ -507,7 +507,7 @@ def _post_normalize(df):
     for c in ["PVP", "Cuota_mes", "TAE", "TIN", "Año"]:
         if c in df.columns:
             df[c] = pd.to_numeric(df[c], errors="coerce")
-    for c in ["Marca", "Mercado", "Modelo_norm", "Modelo", "Versión", "Fecha", "Fecha Publicacion", "Fuel_type", "Carrocería", "Concesionario", "Ciudad", "Provincia"]:
+    for c in ["Marca", "Mercado", "Modelo_norm", "Modelo", "Versión", "Fecha", "Fecha Publicacion", "Fuel_type", "Carrocería", "Segment", "High_Performance", "Concesionario", "Ciudad", "Provincia"]:
         if c in df.columns:
             df[c] = df[c].fillna("").astype(str).str.strip()
     if "Fuel_type" in df.columns:
@@ -669,6 +669,8 @@ def sidebar_filters(df):
             ("Versión", "Versión", "f_Versión"),
             ("Combustible", "Fuel_type", "f_Fuel_type"),
             ("Carrocería", "Carrocería", "f_Carrocería"),
+            ("Segmento", "Segment", "f_Segment"),
+            ("High Performance", "High_Performance", "f_High_Performance"),
             ("Concesionario", "Concesionario", "f_Concesionario"),
             ("Ciudad", "Ciudad", "f_Ciudad"),
             ("Provincia", "Provincia", "f_Provincia"),
@@ -728,6 +730,8 @@ def sidebar_filters(df):
         versiones  = msel("Versión",        "Versión",        "f_Versión")
         fuels      = msel("Combustible",    "Fuel_type",      "f_Fuel_type")
         carros     = msel("Carrocería",     "Carrocería",     "f_Carrocería")
+        segmentos  = msel("Segmento",       "Segment",        "f_Segment")
+        high_perf  = msel("High Performance", "High_Performance", "f_High_Performance")
         dealers    = msel("Concesionario",  "Concesionario",  "f_Concesionario")
         ciudades   = msel("Ciudad",         "Ciudad",         "f_Ciudad")
         provincias = msel("Provincia",      "Provincia",      "f_Provincia")
@@ -762,7 +766,8 @@ def sidebar_filters(df):
     mask = pd.Series(True, index=df.index)
     for col, sel in [
         ("Marca", marcas), ("Mercado", mercados), ("Modelo_norm", modelos), ("Versión", versiones),
-        ("Fuel_type", fuels), ("Carrocería", carros), ("Concesionario", dealers),
+        ("Fuel_type", fuels), ("Carrocería", carros), ("Segment", segmentos),
+        ("High_Performance", high_perf), ("Concesionario", dealers),
         ("Ciudad", ciudades), ("Provincia", provincias),
     ]:
         if sel and col in df.columns:
@@ -1236,6 +1241,8 @@ def tabla_vehiculos(df):
         "Fecha Publicacion": "Fecha Publicacion",
         "Fuel_type": "Combustible",
         "Carrocería": "Carrocería",
+        "Segment": "Segmento",
+        "High_Performance": "High Performance",
         "PVP": "Precio (€)",
         "Cuota_mes": "Cuota/mes (€)",
         "TAE": "TAE (%)",
@@ -1568,7 +1575,7 @@ def _llm_provider():
 def _chat_context(df: pd.DataFrame) -> str:
     context_cols = [c for c in [
         "Marca", "Mercado", "Modelo_norm", "Versión", "Año", "Fecha Publicacion",
-        "Fuel_type", "Carrocería", "PVP", "Cuota_mes", "TAE",
+        "Fuel_type", "Carrocería", "Segment", "High_Performance", "PVP", "Cuota_mes", "TAE",
         "Concesionario", "Ciudad", "Provincia", "URL",
     ] if c in df.columns]
     slim = df[context_cols].copy()
@@ -1584,7 +1591,7 @@ def _chat_context(df: pd.DataFrame) -> str:
                     "max": round(float(s.max()), 2),
                 }
     top_values = {}
-    for col in ["Marca", "Modelo_norm", "Versión", "Fuel_type", "Carrocería", "Concesionario", "Ciudad", "Provincia"]:
+    for col in ["Marca", "Modelo_norm", "Versión", "Fuel_type", "Carrocería", "Segment", "High_Performance", "Concesionario", "Ciudad", "Provincia"]:
         if col in slim.columns and slim[col].notna().any():
             top_values[col] = slim[col].astype(str).value_counts().head(12).to_dict()
     sample = slim.head(10).fillna("").to_dict(orient="records")

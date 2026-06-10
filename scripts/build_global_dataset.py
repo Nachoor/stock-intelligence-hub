@@ -14,6 +14,7 @@ PT_DIR = BASE_DIR / "PT_MARKET"
 
 OUT_XLSX = BASE_DIR / "STOCK_UNIFICADO_GLOBAL.xlsx"
 OUT_CSV = BASE_DIR / "STOCK_UNIFICADO_GLOBAL.csv"
+MASTER_XLSX = BASE_DIR / "FICHERO_MAESTRO.xlsx"
 
 UNIFIED_COLUMNS = [
     "Market",
@@ -36,6 +37,8 @@ UNIFIED_COLUMNS = [
     "APR_pct",
     "Availability",
     "Engine_Raw",
+    "Segment",
+    "High_Performance",
     "URL",
 ]
 
@@ -455,6 +458,97 @@ def read_excel(path: Path) -> pd.DataFrame:
     return pd.read_excel(path, engine="openpyxl")
 
 
+def _mode(values: list[str]) -> str:
+    clean = [v for v in values if v]
+    if not clean:
+        return ""
+    return pd.Series(clean).mode().iloc[0]
+
+
+def _version_match_score(source_version: str, master_version: str) -> int:
+    source_key = norm_key(source_version)
+    master_key = norm_key(master_version)
+    if not source_key or not master_key:
+        return 0
+    if source_key == master_key:
+        return 10000 + len(master_key)
+    if master_key in source_key or source_key in master_key:
+        return 1000 + min(len(source_key), len(master_key))
+    source_tokens = set(source_key.split())
+    master_tokens = set(master_key.split())
+    if len(master_tokens) >= 2 and master_tokens.issubset(source_tokens):
+        return 100 + len(master_tokens)
+    return 0
+
+
+def load_master_catalog():
+    if not MASTER_XLSX.exists():
+        print(f"Warning: master catalog not found: {MASTER_XLSX}")
+        return {}, {}, {}
+
+    master = pd.read_excel(MASTER_XLSX, engine="openpyxl")
+    exact: dict[tuple[str, str, str], dict[str, str]] = {}
+    by_model: dict[tuple[str, str], list[tuple[str, dict[str, str]]]] = {}
+    segment_values: dict[tuple[str, str], list[str]] = {}
+
+    for _, row in master.iterrows():
+        brand = normalize_brand(row.get("Brand", ""))
+        model = master_model(row.get("Model", ""), brand, row.get("Version", ""))
+        model_key = norm_key(model)
+        version = clean_text(row.get("Version", ""))
+        version_key = norm_key(version)
+        if not brand or not model_key:
+            continue
+        entry = {
+            "Segment": clean_text(row.get("Segment", "")),
+            "High_Performance": clean_text(row.get("High_Performance", "")),
+        }
+        exact[(brand, model_key, version_key)] = entry
+        by_model.setdefault((brand, model_key), []).append((version, entry))
+        segment_values.setdefault((brand, model_key), []).append(entry["Segment"])
+
+    model_segment = {key: _mode(values) for key, values in segment_values.items()}
+    print(f"Loaded master catalog: {len(master)} rows from {MASTER_XLSX.name}")
+    return exact, by_model, model_segment
+
+
+def enrich_from_master(df: pd.DataFrame) -> pd.DataFrame:
+    exact, by_model, model_segment = load_master_catalog()
+    if not exact:
+        df["Segment"] = ""
+        df["High_Performance"] = ""
+        return df
+
+    segments: list[str] = []
+    high_perf: list[str] = []
+    for _, row in df.iterrows():
+        brand = normalize_brand(row.get("Brand", ""))
+        model_key = norm_key(row.get("Model", ""))
+        version = clean_text(row.get("Version", ""))
+        version_key = norm_key(version)
+        model_lookup = (brand, model_key)
+        entry = exact.get((brand, model_key, version_key))
+
+        best_entry = entry
+        if best_entry is None:
+            best_score = 0
+            for master_version, candidate in by_model.get(model_lookup, []):
+                score = _version_match_score(version, master_version)
+                if score > best_score:
+                    best_score = score
+                    best_entry = candidate
+
+        segments.append(
+            clean_text((best_entry or {}).get("Segment", ""))
+            or model_segment.get(model_lookup, "")
+        )
+        high_perf.append(clean_text((best_entry or {}).get("High_Performance", "")))
+
+    df["Segment"] = segments
+    df["High_Performance"] = high_perf
+    return df
+
+
 def normalize_rows(path: Path, brand: str, market: str) -> list[dict]:
     df = read_excel(path)
     rows: list[dict] = []
@@ -486,7 +580,7 @@ def normalize_rows(path: Path, brand: str, market: str) -> list[dict]:
                 "Fuel_Type": normalize_fuel(engine, version, model),
                 "Year": int(year) if year else None,
                 "Available_Date": clean_text(first(row, "Available_Date", "Fecha", "Fecha Disponible", "Date")),
-                "Published_Date": clean_text(first(row, "Published_Date", "Publication_Date", "Fecha Publicacion", "Fecha Publicación", "Listing_Date", "Online_Since")),
+                "Published_Date": clean_text(first(row, "Published_Date", "Published Date", "Publication_Date", "Fecha Publicacion", "Fecha Publicación", "Listing_Date", "Online_Since")),
                 "Dealer": clean_text(first(row, "Dealer", "Concesionario")),
                 "City": city,
                 "Province": province,
@@ -532,6 +626,7 @@ def build() -> pd.DataFrame:
         rows.extend(normalize_rows(path, brand, market))
 
     df = pd.DataFrame(rows, columns=UNIFIED_COLUMNS)
+    df = enrich_from_master(df)
     df = deduplicate_stock(df)
     if len(df) < 1000:
         raise RuntimeError(f"Refusing to write dataset with too few rows: {len(df)}")

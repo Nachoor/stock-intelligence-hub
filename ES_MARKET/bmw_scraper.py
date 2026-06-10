@@ -6,6 +6,7 @@ from __future__ import annotations
 import json, os, random, re, threading
 from datetime import date, datetime
 from pathlib import Path
+from urllib.parse import urlencode
 import openpyxl
 from openpyxl.styles import Alignment, Font, PatternFill
 
@@ -77,6 +78,37 @@ def normalize_money(v):
         try: return float(c)
         except ValueError: return v
     return v
+
+def build_detail_url(v, mo, fallback_car_id):
+    vss_id = text_value(first_existing(v.get("vssId"), v.get("id")))
+    config_id = text_value(deep_get(v, "internal", "vssConfigId"))
+    if not vss_id:
+        return "https://www.bmw.es/es-es/sl/stocklocator/results?vehicleId=" + str(fallback_car_id)
+    if ":" not in config_id:
+        params = {"vehicleId": str(fallback_car_id)}
+        return "https://www.bmw.es/es-es/sl/stocklocator/details/" + vss_id + "?" + urlencode(params)
+
+    model_code, raw_codes = config_id.split(":", 1)
+    codes = [c.strip() for c in raw_codes.split(",") if c.strip()]
+    paint = first_existing(*(c for c in codes if c.startswith("P")))
+    fabric = first_existing(*(c for c in codes if c.startswith("F")))
+    options = [c for c in codes if c not in {paint, fabric}]
+    model_range_code = text_value(first_existing(
+        deep_get(mo, "modelRange", "code"),
+        deep_get(mo, "modelRange", "modelRangeCode"),
+        v.get("modelRangeCode"),
+    ))
+
+    params = {"modelCode": model_code, "vehicleId": str(fallback_car_id)}
+    if paint:
+        params["paint"] = paint
+    if fabric:
+        params["fabric"] = fabric
+    if model_range_code:
+        params["modelRangeCode"] = model_range_code
+    if options:
+        params["options"] = ",".join(options)
+    return "https://www.bmw.es/es-es/sl/stocklocator/details/" + vss_id + "?" + urlencode(params, safe=",")
 
 def accept_cookies(page):
     for label in ["Aceptar todo","Aceptar todas","Aceptar cookies","Aceptar","Confirmar",
@@ -260,7 +292,7 @@ def map_vehicle(hit, pricing_map=None):
         "Campana":"",
         "Online":"true" if "ONLINE" in sales_dest else "false",
         "Modelo Negocio":text_value(deep_get(v,"salesProcess","type",default="dealer_stock")),
-        "URL Coche":"https://www.bmw.es/es-es/sl/stocklocator/results?vehicleId=" + str(car_id),
+        "URL Coche":build_detail_url(v, mo, car_id),
     }
 
 def save_excel(rows, output_path):

@@ -90,6 +90,15 @@ def to_str(val):
     return str(val)
 
 
+def format_epoch_ms(value):
+    if not value:
+        return ""
+    try:
+        return datetime.utcfromtimestamp(float(value) / 1000).strftime("%Y-%m-%dT%H:%M:%S")
+    except Exception:
+        return ""
+
+
 def audi_detail_url(web_link):
     """Convert Audi entry links to the final stock detail URL."""
     if not web_link:
@@ -145,6 +154,7 @@ def parse_vehicle(v):
             avail_date = datetime.utcfromtimestamp(avail_date / 1000).strftime("%Y-%m-%d")
         except:
             avail_date = ""
+    published_date = format_epoch_ms(safe_get(v, "dateOffer"))
 
     # Dealer
     dealer_city = to_str(safe_get(v, "dealer", "city"))
@@ -199,6 +209,7 @@ def parse_vehicle(v):
         "disponibilidad": avail_code,
         "entrega_texto":  str(avail_text)[:80] if avail_text else "",
         "fecha_disponible": avail_date,
+        "fecha_publicacion": published_date,
         "concesionario":  dealer_name,
         "ciudad":         dealer_city,
         "dealer_id":      dealer_id,
@@ -259,7 +270,7 @@ HEADERS = [
     "Color Ext.", "Código Color", "Color Int.", "Tapizado",
     "PVP (€)", "Etiqueta Precio", "Cuota/mes (€)", "TAE (%)", "TIN (%)",
     "Entrada (€)", "Plazo (meses)",
-    "Disponibilidad", "Texto Entrega", "Fecha Disponible",
+    "Disponibilidad", "Texto Entrega", "Fecha Disponible", "Fecha Publicacion",
     "Concesionario", "Ciudad", "ID Dealer", "Email Dealer",
     "Car ID", "Campaña", "Online", "Modelo Negocio", "URL Coche",
 ]
@@ -270,7 +281,7 @@ FIELD_MAP = [
     "color_ext", "codigo_color", "color_int", "tapizado",
     "pvp_eur", "pvp_label", "cuota_mes_eur", "tae", "tin",
     "entrada_eur", "plazo_meses",
-    "disponibilidad", "entrega_texto", "fecha_disponible",
+    "disponibilidad", "entrega_texto", "fecha_disponible", "fecha_publicacion",
     "concesionario", "ciudad", "dealer_id", "email_dealer",
     "car_id", "con_campaña", "compra_online", "modelo_negocio", "url_coche",
 ]
@@ -281,7 +292,7 @@ WIDTHS = [
     18, 14, 16, 12,
     12, 20, 14, 8, 8,
     12, 12,
-    14, 50, 14,
+    14, 50, 14, 18,
     35, 20, 10, 28,
     20, 8, 8, 16, 65,
 ]

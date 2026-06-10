@@ -89,6 +89,31 @@ def parse_eur(value):
 # HTTP SESSION
 # ═══════════════════════════════════════════════════════
 
+def normalize_date_text(value):
+    text = clean_text(value)
+    if not text:
+        return ""
+    for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y", "%d.%m.%Y"):
+        try:
+            return datetime.strptime(text[:10], fmt).strftime("%Y-%m-%d")
+        except ValueError:
+            pass
+    return text[:10] if re.match(r"\d{4}-\d{2}-\d{2}", text) else ""
+
+
+def extract_publication_date(text):
+    text = clean_text(text)
+    if not text:
+        return ""
+    date_re = r"(\d{4}-\d{2}-\d{2}|\d{1,2}[./-]\d{1,2}[./-]\d{2,4})"
+    for line in re.split(r"[\n|]", text):
+        key = line.lower()
+        if any(token in key for token in ("publicad", "adicionad", "online", "desde", "data")):
+            match = re.search(date_re, line)
+            if match:
+                return normalize_date_text(match.group(1))
+    return ""
+
 def make_session():
     s = requests.Session()
     s.headers.update({
@@ -275,6 +300,7 @@ def parse_search_page(html, model_group):
             availability = "available"
         else:
             availability = "soon"
+        published_date = extract_publication_date(text)
 
         cars.append({
             "car_id":       car_id,
@@ -292,6 +318,7 @@ def parse_search_page(html, model_group):
             "rrp_eur":      rrp,
             "base_price":   base_price,
             "availability": availability,
+            "published_date": published_date,
             "url":          f"{BASE_URL}/search/car/{car_id}",
         })
 
@@ -365,6 +392,7 @@ def parse_detail_page(html, car_id):
         "dealer_phone": dealer_phone,
         "co2":         co2,
         "consumption": consumption,
+        "published_date": extract_publication_date(text),
     }
 
 
@@ -402,6 +430,8 @@ def fetch_detail(session, car):
                 car["city"] = extra["city"]
             if extra.get("ext_color") and not car.get("ext_color"):
                 car["ext_color"] = extra["ext_color"]
+            if extra.get("published_date") and not car.get("published_date"):
+                car["published_date"] = extra["published_date"]
             car["int_color"]    = extra.get("int_color", "")
             car["dealer_phone"] = extra.get("dealer_phone", "")
             car["co2"]          = extra.get("co2", "")
@@ -418,15 +448,15 @@ HEADERS = [
     "Type", "Model", "Version", "Model Group", "Year", "Fuel", "Power", "Body", "Drive",
     "Ext. Color", "Int. Color",
     "RRP (EUR)", "Base Price (EUR)",
-    "Availability", "Dealer", "City", "Car ID", "Car URL",
+    "Availability", "Published Date", "Dealer", "City", "Car ID", "Car URL",
 ]
 FIELD_MAP = [
     "type", "model", "version", "model_group", "year", "fuel", "power", "body", "drive",
     "ext_color", "int_color",
     "rrp_eur", "base_price",
-    "availability", "dealer", "city", "car_id", "url",
+    "availability", "published_date", "dealer", "city", "car_id", "url",
 ]
-WIDTHS = [8,40,40,22,6,18,14,10,18,20,16,14,14,14,35,22,22,65]
+WIDTHS = [8,40,40,22,6,18,14,10,18,20,16,14,14,14,18,35,22,22,65]
 AUDI_GRAY  = "4E4E4E"
 AUDI_LIGHT = "F0F0F0"
 

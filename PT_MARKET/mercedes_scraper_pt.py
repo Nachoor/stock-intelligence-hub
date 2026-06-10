@@ -55,15 +55,15 @@ HEADERS = [
     "Type", "Model", "Version", "Body", "Fuel", "Gearbox", "Power", "Drive",
     "Ext. Color", "Int. Color",
     "RRP (EUR)", "Monthly Rate (EUR)", "APR (%)",
-    "Availability", "Dealer", "City", "Car ID", "Car URL",
+    "Availability", "Published Date", "Dealer", "City", "Car ID", "Car URL",
 ]
 FIELD_MAP = [
     "type", "model", "version", "body", "fuel", "gearbox", "power", "drive",
     "ext_color", "int_color",
     "rrp_eur", "monthly_rate", "apr",
-    "availability", "dealer", "city", "car_id", "url",
+    "availability", "published_date", "dealer", "city", "car_id", "url",
 ]
-WIDTHS = [8, 30, 40, 14, 14, 12, 12, 14, 20, 16, 14, 16, 8, 14, 35, 18, 22, 65]
+WIDTHS = [8, 30, 40, 14, 14, 12, 12, 14, 20, 16, 14, 16, 8, 14, 18, 35, 18, 22, 65]
 MB_BLUE  = "00ADEF"
 MB_LIGHT = "EAF6FF"
 
@@ -233,6 +233,17 @@ def extract_vehicle(hit):
     availability = ("available" if any(x in avail_raw.lower()
                     for x in ["now","immediately","stock","available"])
                     else ("soon" if avail_raw else ""))
+    published_date = (_str(_s(v, "publishedDate"))
+                      or _str(_s(v, "publicationDate"))
+                      or _str(_s(v, "datePublished"))
+                      or _str(_s(v, "onlineSince"))
+                      or _str(_s(v, "stock", "publishedDate"))
+                      or _str(_s(v, "stock", "publicationDate"))
+                      or _str(_s(v, "stock", "createdDate"))
+                      or _str(_s(hit, "publishedDate"))
+                      or _str(_s(hit, "publicationDate"))
+                      or _str(_s(hit, "datePublished"))
+                      or "")
 
     dealer_obj  = _s(v,"dealer") or _s(hit,"dealer") or {}
     dealer_name = (_str(_s(v,"dealerName"))
@@ -273,7 +284,7 @@ def extract_vehicle(hit):
         "ext_color":ext_color,"int_color":int_color,
         "rrp_eur":rrp,"monthly_rate":monthly,"apr":apr,
         "availability":availability,"dealer":dealer_name,"city":city,
-        "car_id":car_id,"url":car_url,
+        "published_date":published_date,"car_id":car_id,"url":car_url,
     }
 
 

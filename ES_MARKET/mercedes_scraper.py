@@ -222,6 +222,30 @@ def get_all_dealers(session):
 # PARSING DE TARJETAS DE COCHES
 # ═══════════════════════════════════════════════════════
 
+def normalize_date_text(value):
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y", "%d.%m.%Y"):
+        try:
+            return datetime.strptime(text[:10], fmt).strftime("%Y-%m-%d")
+        except ValueError:
+            pass
+    return text[:10] if re.match(r"\d{4}-\d{2}-\d{2}", text) else ""
+
+
+def extract_publication_date(text):
+    text = re.sub(r"\s+", " ", str(text or "")).strip()
+    if not text:
+        return ""
+    date_re = r"(\d{4}-\d{2}-\d{2}|\d{1,2}[./-]\d{1,2}[./-]\d{2,4})"
+    for match in re.finditer(date_re, text):
+        start = max(0, match.start() - 80)
+        context = text[start:match.end() + 40].lower()
+        if any(token in context for token in ("publicad", "alta", "online", "desde", "fecha")):
+            return normalize_date_text(match.group(1))
+    return ""
+
 def parse_page(html, dealer_name, dealer_city, dealer_state, base_domain):
     """
     Extrae todos los coches de una página HTML del showroom.
@@ -271,6 +295,7 @@ def parse_page(html, dealer_name, dealer_city, dealer_state, base_domain):
 
             motor_el = card.find("p", class_=lambda c: c and "bt-gris" in c)
             motor    = motor_el.get_text(strip=True).rstrip(",") if motor_el else ""
+            fecha_publicacion = extract_publication_date(card.get_text(" ", strip=True))
 
             tae = ""
             for p in card.find_all("p", class_=lambda c: c and "fuente1" in c):
@@ -292,6 +317,7 @@ def parse_page(html, dealer_name, dealer_city, dealer_state, base_domain):
                 "tae_pct":       tae,
                 "motor":         motor,
                 "estado":        estado,
+                "fecha_publicacion": fecha_publicacion,
                 "url_coche":     car_url,
             })
 
@@ -404,6 +430,8 @@ def enrich_missing_prices_from_detail(session, cars):
                 continue
             soup = BeautifulSoup(r.text, "html.parser")
             text = soup.get_text(" ", strip=True)
+            if not car.get("fecha_publicacion"):
+                car["fecha_publicacion"] = extract_publication_date(text)
 
             if not car.get("pvp_eur"):
                 pvp_m = re.search(r"PVP\s*:?\s*([\d.,]+)\s*€", text, re.IGNORECASE)
@@ -436,17 +464,17 @@ HEADERS = [
     "Concesionario", "Ciudad", "Provincia", "Tipo",
     "Modelo", "Versión", "Color",
     "PVP (€)", "Cuota/mes (€)", "TAE (%)",
-    "Motor/Combustible", "Estado", "URL Coche",
+    "Motor/Combustible", "Estado", "Fecha Publicacion", "URL Coche",
 ]
 
 FIELD_MAP = [
     "concesionario", "ciudad", "provincia", "tipo",
     "modelo", "version", "color",
     "pvp_eur", "cuota_mes_eur", "tae_pct",
-    "motor", "estado", "url_coche",
+    "motor", "estado", "fecha_publicacion", "url_coche",
 ]
 
-COL_WIDTHS = [30, 16, 16, 10, 40, 45, 14, 12, 14, 8, 30, 20, 65]
+COL_WIDTHS = [30, 16, 16, 10, 40, 45, 14, 12, 14, 8, 30, 20, 18, 65]
 
 
 def save_excel(cars, dealers, path):

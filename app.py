@@ -985,33 +985,41 @@ def show_kpis(df):
     top_ciudad = df["Ciudad"].value_counts().idxmax() if "Ciudad" in df.columns and not df["Ciudad"].isna().all() else "—"
     top_dealer = df["Concesionario"].value_counts().idxmax() if "Concesionario" in df.columns and not df["Concesionario"].isna().all() else "—"
 
-    row1 = st.columns(7)
+    tae_s = df["TAE"].dropna() if "TAE" in df.columns else pd.Series()
+
+    row1 = st.columns(4)
     datos_r1 = [
         ("Total vehículos",   eu_num(total),              "en stock"),
         ("Con precio",        eu_num(n_pvp),              pct(n_pvp, total)),
         ("Con cuota/mes",     eu_num(n_cuota),            pct(n_cuota, total)),
-        ("Precio medio",      eur(pvp_s.mean()),          f"Mín. {eur(pvp_s.min())}"),
-        ("Precio máximo",     eur(pvp_s.max()),           ""),
-        ("Cuota media",       eu_mes(cuota_s.mean()) if len(cuota_s) else "—", f"Mín. {eur(cuota_s.min())}" if len(cuota_s) else ""),
-        ("Cuota máxima",      eu_mes(cuota_s.max())  if len(cuota_s) else "—", ""),
+        ("Precio medio",      eur(pvp_s.mean()),          f"Mín. {eur(pvp_s.min())} · Máx. {eur(pvp_s.max())}"),
     ]
     for col, (l, v, s) in zip(row1, datos_r1):
         col.markdown(kpi(l, v, s), unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    row2 = st.columns(7)
-    tae_s = df["TAE"].dropna() if "TAE" in df.columns else pd.Series()
+    row2 = st.columns(4)
     datos_r2 = [
+        ("Cuota media",       eu_mes(cuota_s.mean()) if len(cuota_s) else "—",
+         f"Mín. {eur(cuota_s.min())} · Máx. {eur(cuota_s.max())}" if len(cuota_s) else ""),
         ("Marcas",            str(df["Marca"].nunique()),  "analizadas"),
         ("Modelos",           str(n_mods),                 "distintos"),
         ("Concesionarios",    str(n_deal),                 "analizados"),
+    ]
+    for col, (l, v, s) in zip(row2, datos_r2):
+        col.markdown(kpi(l, v, s), unsafe_allow_html=True)
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    row3 = st.columns(4)
+    datos_r3 = [
         ("Modelo top stock",  str(top_modelo)[:26],        "más unidades"),
         ("Ciudad con más stock", str(top_ciudad),          ""),
         ("Dealer principal",  str(top_dealer)[:24],        ""),
         ("TAE media",         pct_val(tae_s.mean(), 2) if len(tae_s) else "—", "sobre financiados"),
     ]
-    for col, (l, v, s) in zip(row2, datos_r2):
+    for col, (l, v, s) in zip(row3, datos_r3):
         col.markdown(kpi(l, v, s), unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────────────────────

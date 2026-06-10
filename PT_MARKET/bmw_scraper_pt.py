@@ -541,7 +541,7 @@ def scrape_bmw():
                             paged[key]["maxResults"] = MAX_PER_PAGE
                     url_p = (base_url + "?maxResults=" + str(MAX_PER_PAGE)
                              + "&startIndex=" + str(start) + "&brand=BMW")
-                    js_body = json_mod.dumps(paged)
+                    js_body = json.dumps(paged)
                     # fire-and-forget: on_response captura la respuesta
                     try:
                         page.evaluate(

@@ -465,9 +465,32 @@ def _mode(values: list[str]) -> str:
     return pd.Series(clean).mode().iloc[0]
 
 
+_BMW_CHASSIS_CODE_RE = re.compile(r"^[a-z]\d{2,3}(lci)?$")
+_DRIVETRAIN_PREFIX_RE = re.compile(r"^(x|s)drive(\w+)$")
+_DRIVETRAIN_TOKENS = {"xdrive", "sdrive", "quattro", "4matic"}
+
+
+def _strip_internal_codes(key: str) -> str:
+    """Drop internal chassis codes (e.g. U11, F48LCI, E84) and drivetrain
+    prefixes (xDrive/sDrive/quattro/4MATIC) so version strings compare on the
+    meaningful engine/trim tokens only."""
+    out = []
+    for token in key.split():
+        if _BMW_CHASSIS_CODE_RE.match(token):
+            continue
+        m = _DRIVETRAIN_PREFIX_RE.match(token)
+        if m:
+            out.append(m.group(2))
+            continue
+        if token in _DRIVETRAIN_TOKENS:
+            continue
+        out.append(token)
+    return " ".join(out)
+
+
 def _version_match_score(source_version: str, master_version: str) -> int:
-    source_key = norm_key(source_version)
-    master_key = norm_key(master_version)
+    source_key = _strip_internal_codes(norm_key(source_version))
+    master_key = _strip_internal_codes(norm_key(master_version))
     if not source_key or not master_key:
         return 0
     if source_key == master_key:
@@ -484,12 +507,13 @@ def _version_match_score(source_version: str, master_version: str) -> int:
 def load_master_catalog():
     if not MASTER_XLSX.exists():
         print(f"Warning: master catalog not found: {MASTER_XLSX}")
-        return {}, {}, {}
+        return {}, {}, {}, {}
 
     master = pd.read_excel(MASTER_XLSX, engine="openpyxl")
     exact: dict[tuple[str, str, str], dict[str, str]] = {}
     by_model: dict[tuple[str, str], list[tuple[str, dict[str, str]]]] = {}
     segment_values: dict[tuple[str, str], list[str]] = {}
+    hp_values: dict[tuple[str, str], list[str]] = {}
 
     for _, row in master.iterrows():
         brand = normalize_brand(row.get("Brand", ""))
@@ -506,14 +530,16 @@ def load_master_catalog():
         exact[(brand, model_key, version_key)] = entry
         by_model.setdefault((brand, model_key), []).append((version, entry))
         segment_values.setdefault((brand, model_key), []).append(entry["Segment"])
+        hp_values.setdefault((brand, model_key), []).append(entry["High_Performance"])
 
     model_segment = {key: _mode(values) for key, values in segment_values.items()}
+    model_hp = {key: _mode(values) for key, values in hp_values.items()}
     print(f"Loaded master catalog: {len(master)} rows from {MASTER_XLSX.name}")
-    return exact, by_model, model_segment
+    return exact, by_model, model_segment, model_hp
 
 
 def enrich_from_master(df: pd.DataFrame) -> pd.DataFrame:
-    exact, by_model, model_segment = load_master_catalog()
+    exact, by_model, model_segment, model_hp = load_master_catalog()
     if not exact:
         df["Segment"] = ""
         df["High_Performance"] = ""
@@ -542,11 +568,31 @@ def enrich_from_master(df: pd.DataFrame) -> pd.DataFrame:
             clean_text((best_entry or {}).get("Segment", ""))
             or model_segment.get(model_lookup, "")
         )
-        high_perf.append(clean_text((best_entry or {}).get("High_Performance", "")))
+        high_perf.append(
+            clean_text((best_entry or {}).get("High_Performance", ""))
+            or model_hp.get(model_lookup, "")
+            or "Standard"
+        )
 
     df["Segment"] = segments
     df["High_Performance"] = high_perf
     return df
+
+
+_PLACEHOLDER_VERSION_RE = re.compile(r"^\d+(\.\d+)?$")
+
+
+def _derive_version(row: pd.Series, brand_norm: str, raw_version: str) -> str:
+    """Some Audi ES rows have meaningless numeric placeholders ("1", "2", "0")
+    in the Versión column. The real descriptor (trim + engine + body) lives in
+    the Modelo column instead, e.g. "Audi A1 Sportback Advanced 30 TFSI 85 kW
+    (116 CV) 6 vel." -> "A1 Sportback Advanced 30 TFSI 85 kW (116 CV) 6 vel."
+    """
+    if brand_norm != "Audi" or not _PLACEHOLDER_VERSION_RE.match(str(raw_version).strip()):
+        return raw_version
+    modelo = clean_text(first(row, "Modelo", "Model"))
+    modelo = re.sub(r"^audi\s+", "", modelo, flags=re.IGNORECASE)
+    return modelo or raw_version
 
 
 def normalize_rows(path: Path, brand: str, market: str) -> list[dict]:
@@ -554,8 +600,8 @@ def normalize_rows(path: Path, brand: str, market: str) -> list[dict]:
     rows: list[dict] = []
     for _, row in df.iterrows():
         raw_model = first(row, "Carline", "Model Group", "Modelo_norm", "Model", "Modelo", "model")
-        version = clean_text(first(row, "Version", "Versión", "version"))
         brand_norm = normalize_brand(brand)
+        version = clean_text(_derive_version(row, brand_norm, first(row, "Version", "Versión", "version")))
         model = master_model(raw_model, brand_norm, version)
         if not model:
             continue

@@ -35,6 +35,9 @@ UNIFIED_COLUMNS = [
     "RRP_EUR",
     "Monthly_EUR",
     "APR_pct",
+    "Deposit_EUR",
+    "Final_Installment_EUR",
+    "Term_Months",
     "Availability",
     "Engine_Raw",
     "Segment",
@@ -616,6 +619,9 @@ def normalize_rows(path: Path, brand: str, market: str) -> list[dict]:
         rrp = to_number(first(row, "RRP_EUR", "PVP (€)", "PVP (EUR)", "RRP (EUR)", "Base Price (EUR)", "Price (EUR)"))
         monthly = to_number(first(row, "Monthly_EUR", "Cuota/mes (€)", "Cuota/mes (EUR)", "Monthly Rate (EUR)", "Monthly (EUR)"))
         apr = to_number(first(row, "APR_pct", "TAE (%)", "APR (%)"))
+        deposit = to_number(first(row, "Deposit_EUR", "Entrada (EUR)", "Entrada (€)", "Deposit (EUR)"))
+        final_installment = to_number(first(row, "Final_Installment_EUR", "Cuota Final (EUR)", "Cuota Final (€)"))
+        term_months = to_number(first(row, "Term_Months", "Plazo (meses)", "Term (months)"))
         year = to_number(first(row, "Year", "Año", "Ano"))
 
         url = normalize_offer_url(first(row, "URL", "URL Coche", "Car URL"), brand_norm, market)
@@ -640,6 +646,9 @@ def normalize_rows(path: Path, brand: str, market: str) -> list[dict]:
                 "RRP_EUR": rrp,
                 "Monthly_EUR": monthly,
                 "APR_pct": apr,
+                "Deposit_EUR": deposit,
+                "Final_Installment_EUR": final_installment,
+                "Term_Months": int(term_months) if term_months else None,
                 "Availability": clean_text(first(row, "Availability", "Estado", "Disponibilidad")),
                 "Engine_Raw": clean_text(engine),
                 "URL": url,

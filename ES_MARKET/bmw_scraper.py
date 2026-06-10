@@ -10,8 +10,9 @@ from urllib.parse import urlencode
 import openpyxl
 from openpyxl.styles import Alignment, Font, PatternFill
 
-# URL sin filtros: recoge TODOS los vehículos del stock locator
-START_URL    = "https://www.bmw.es/es-es/sl/stocklocator/results?sorting=PRICE_ASC"
+# Filtro IS_INSTALLMENT:true para que la API incluya datos de financiacion
+# (pricing.monthlyInstallment.selectedSfOffer.calculations) en cada vehiculo.
+START_URL    = "https://www.bmw.es/es-es/sl/stocklocator/results?filters=%7B%22IS_INSTALLMENT%22%3Atrue%7D&sorting=PRICE_ASC"
 OUT_XLSX     = "STOCK_BMW.xlsx"
 PARTIAL_XLSX = "STOCK_BMW.partial.xlsx"
 MAX_PER_PAGE = 12   # Máximo que acepta la API (>12 devuelve 400). Hash no es necesario.
@@ -21,7 +22,7 @@ COLUMNS = [
     "Tipo","Modelo","Version","Carline","Ano","Trim","Carroceria",
     "Combustible","Cambio","Potencia","Traccion","Color Ext.","Codigo Color",
     "Color Int.","Tapizado","PVP (EUR)","Etiqueta Precio","Cuota/mes (EUR)",
-    "TAE (%)","TIN (%)","Entrada (EUR)","Plazo (meses)","Disponibilidad",
+    "Cuota Final (EUR)","TAE (%)","TIN (%)","Entrada (EUR)","Plazo (meses)","Disponibilidad",
     "Texto Entrega","Fecha Disponible","Fecha Publicacion","Concesionario","Ciudad","ID Dealer",
     "Email Dealer","Car ID","Campana","Online","Modelo Negocio","URL Coche",
 ]
@@ -199,6 +200,18 @@ def map_vehicle(hit, pricing_map=None):
     install = pricing.get("monthlyInstallment") or {}
     calcs   = deep_get(install, "selectedSfOffer", "calculations", default=[])
     calc    = calcs[0] if isinstance(calcs, list) and calcs else {}
+    fpp     = calc.get("financialProductParameters") or {}
+    def _amt(d):
+        return normalize_money(d.get("amount")) if isinstance(d, dict) else normalize_money(d)
+    def _pct(v):
+        try: return round(float(v) * 100, 2)
+        except (TypeError, ValueError): return ""
+    cuota_mes    = _amt(fpp.get("totalInstallment"))
+    cuota_final  = _amt(fpp.get("lastInstallment"))
+    tae          = _pct(fpp.get("interestEffective"))
+    tin          = _pct(fpp.get("interestNominal"))
+    entrada      = _amt(fpp.get("downPaymentAmount"))
+    plazo        = fpp.get("term") or ""
     model_range = text_value(deep_get(mo, "modelRange", "description"))
     minfo       = mo.get("model") or {}
     derivative  = text_value(first_existing(minfo.get("derivative"), minfo.get("modelName"), mo.get("modelName")))
@@ -276,11 +289,12 @@ def map_vehicle(hit, pricing_map=None):
         "Tapizado":text_value(mo.get("upholsteryType")),
         "PVP (EUR)":pvp,
         "Etiqueta Precio":text_value(price.get("label") or deep_get(pricing,"retailPrice","label")),
-        "Cuota/mes (EUR)":normalize_money(calc.get("monthlyRate")),
-        "TAE (%)":calc.get("effectiveAnnualInterestRate") or "",
-        "TIN (%)":calc.get("nominalInterestRate") or "",
-        "Entrada (EUR)":normalize_money(calc.get("deposit")),
-        "Plazo (meses)":calc.get("term") or "",
+        "Cuota/mes (EUR)":cuota_mes,
+        "Cuota Final (EUR)":cuota_final,
+        "TAE (%)":tae,
+        "TIN (%)":tin,
+        "Entrada (EUR)":entrada,
+        "Plazo (meses)":plazo,
         "Disponibilidad":disponible,
         "Texto Entrega":"Entrega aproximada: " + str(exp_date) if exp_date else "",
         "Fecha Disponible":exp_date or today_str,

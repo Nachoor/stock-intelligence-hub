@@ -1295,7 +1295,10 @@ def comparador(df):
         sub = df[df["Modelo_norm"] == m]
         pvp   = sub["PVP"].dropna()   if "PVP"      in sub.columns else pd.Series()
         cuota = sub["Cuota_mes"].dropna() if "Cuota_mes" in sub.columns else pd.Series()
+        entrada = sub["Entrada"].dropna() if "Entrada" in sub.columns else pd.Series()
+        tin   = sub["TIN"].dropna()   if "TIN"      in sub.columns else pd.Series()
         tae   = sub["TAE"].dropna()   if "TAE"      in sub.columns else pd.Series()
+        plazo = sub["Plazo"].dropna() if "Plazo"    in sub.columns else pd.Series()
         pub   = publication_dates(sub)
         top_fuel  = sub["Fuel_type"].mode()[0]       if "Fuel_type" in sub.columns and not sub["Fuel_type"].isna().all() else "—"
         top_dealer= sub["Concesionario"].value_counts().idxmax() if "Concesionario" in sub.columns and not sub["Concesionario"].isna().all() else "—"
@@ -1311,7 +1314,10 @@ def comparador(df):
             "Cuota media (€/mes)":eu_mes(cuota.mean()) if len(cuota) else "—",
             "Cuota mín. (€/mes)": eu_mes(cuota.min())  if len(cuota) else "—",
             "Cuota máx. (€/mes)": eu_mes(cuota.max())  if len(cuota) else "—",
+            "Entrada media (€)":  eur(entrada.mean()) if len(entrada) else "—",
+            "TIN medio (%)":      pct_val(tin.mean(), 2) if len(tin) else "—",
             "TAE media (%)":      f"{tae.mean():.2f}%".replace(".", ",") if len(tae) else "—",
+            "Plazo medio (meses)":eu_num(plazo.mean()) if len(plazo) else "—",
             "Combustible frec.":  top_fuel,
             "Dealer principal":   top_dealer,
         })

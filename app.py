@@ -691,9 +691,16 @@ def _norm_es(df, mercado="ES"):
     df["Mercado"] = mercado
     df = df.rename(columns={
         "PVP (€)":          "PVP",
+        "PVP (EUR)":        "PVP",
         "Cuota/mes (€)":    "Cuota_mes",
+        "Cuota/mes (EUR)":  "Cuota_mes",
+        "Cuota Final (€)":  "Cuota_final",
+        "Cuota Final (EUR)":"Cuota_final",
         "TAE (%)":          "TAE",
         "TIN (%)":          "TIN",
+        "Entrada (€)":      "Entrada",
+        "Entrada (EUR)":    "Entrada",
+        "Plazo (meses)":    "Plazo",
         "Motor/Combustible":"Motor",
         "URL Coche":        "URL",
     })
@@ -1386,7 +1393,11 @@ def tabla_vehiculos(df):
         "High_Performance": "High Performance",
         "PVP": "Precio (€)",
         "Cuota_mes": "Cuota/mes (€)",
+        "Entrada": "Entrada (€)",
+        "Cuota_final": "Cuota Final (€)",
+        "TIN": "TIN (%)",
         "TAE": "TAE (%)",
+        "Plazo": "Plazo (meses)",
         "Concesionario": "Concesionario",
         "Ciudad": "Ciudad",
         "Provincia": "Provincia",
@@ -1401,8 +1412,16 @@ def tabla_vehiculos(df):
         df_show["Precio (€)"] = df["PVP"].map(lambda x: eur(x) if pd.notna(x) else "")
     if "Cuota/mes (€)" in df_show.columns:
         df_show["Cuota/mes (€)"] = df["Cuota_mes"].map(lambda x: eu_mes(x) if pd.notna(x) else "")
+    if "Entrada (€)" in df_show.columns:
+        df_show["Entrada (€)"] = df["Entrada"].map(lambda x: eur(x) if pd.notna(x) else "")
+    if "Cuota Final (€)" in df_show.columns:
+        df_show["Cuota Final (€)"] = df["Cuota_final"].map(lambda x: eur(x) if pd.notna(x) else "")
+    if "TIN (%)" in df_show.columns:
+        df_show["TIN (%)"] = df["TIN"].map(lambda x: pct_val(x, 2) if pd.notna(x) else "")
     if "TAE (%)" in df_show.columns:
-        df_show["TAE (%)"] = df["TAE"].map(lambda x: pct_val(x, 2))
+        df_show["TAE (%)"] = df["TAE"].map(lambda x: pct_val(x, 2) if pd.notna(x) else "")
+    if "Plazo (meses)" in df_show.columns:
+        df_show["Plazo (meses)"] = df["Plazo"].map(lambda x: str(int(x)) if pd.notna(x) else "")
     if "Año" in df_show.columns:
         df_show["Año"] = df["Año"].map(lambda x: str(int(x)) if pd.notna(x) else "")
     if "Fecha Publicacion" in df_show.columns:

@@ -9,6 +9,7 @@ import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 from pathlib import Path
+from datetime import datetime
 import ast
 import base64
 import html
@@ -33,7 +34,7 @@ st.set_page_config(
 # ─────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap');
 
 html, body, [class*="css"] {
     font-family: 'Inter', sans-serif;
@@ -72,11 +73,86 @@ footer { visibility: hidden; }
     color: #94a3b8 !important;
     font-size: 12px;
 }
+[data-testid="stSidebar"] h1,
+[data-testid="stSidebar"] h2,
+[data-testid="stSidebar"] h3,
+[data-testid="stSidebar"] h4,
+[data-testid="stSidebar"] h5,
+[data-testid="stSidebar"] h6 {
+    color: #e2e8f0 !important;
+}
+[data-testid="stSidebar"] label p {
+    color: #cbd5e1 !important;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
 [data-testid="stSidebar"] .stMultiSelect [data-baseweb="tag"] {
     background: #1c69d4;
 }
 [data-testid="stSidebar"] hr {
     border-color: #1e3050;
+}
+
+/* -- Inputs del sidebar (selects, sliders, checkboxes) -- */
+[data-testid="stSidebar"] div[data-baseweb="select"] > div {
+    background: #13283c;
+    border-color: #1e3050 !important;
+    border-radius: 6px;
+}
+[data-testid="stSidebar"] div[data-baseweb="select"] > div:hover {
+    border-color: #1c69d4 !important;
+}
+[data-testid="stSidebar"] div[data-baseweb="select"] div,
+[data-testid="stSidebar"] div[data-baseweb="select"] span,
+[data-testid="stSidebar"] div[data-baseweb="select"] input {
+    color: #e2e8f0 !important;
+}
+[data-testid="stSidebar"] div[data-baseweb="select"] svg {
+    fill: #cbd5e1 !important;
+}
+div[data-baseweb="popover"] li {
+    font-size: 12px;
+}
+div[data-baseweb="popover"] li:hover {
+    background: #eff6ff;
+}
+
+/* Boton "Borrar todos los filtros" */
+[data-testid="stSidebar"] .stButton > button {
+    background: transparent;
+    border: 1px solid #1e3050;
+    color: #94a3b8;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    transition: border-color .15s ease, color .15s ease, background .15s ease;
+}
+[data-testid="stSidebar"] .stButton > button:hover {
+    border-color: #1c69d4;
+    color: #1c69d4;
+    background: rgba(28, 105, 212, 0.08);
+}
+[data-testid="stSidebar"] .stButton > button:focus:not(:active) {
+    border-color: #1c69d4;
+    color: #1c69d4;
+}
+
+/* Sliders */
+[data-testid="stSidebar"] .stSlider [data-baseweb="slider"] [role="slider"] {
+    background-color: #1c69d4 !important;
+    border-color: #1c69d4 !important;
+}
+[data-testid="stSidebar"] .stSlider div[data-testid="stTickBarMin"],
+[data-testid="stSidebar"] .stSlider div[data-testid="stTickBarMax"] {
+    color: #64748b;
+    font-size: 10px;
+}
+
+/* Checkboxes */
+[data-testid="stSidebar"] input[type="checkbox"] {
+    accent-color: #1c69d4;
 }
 
 /* ── Títulos de sección ─────────────────────── */
@@ -86,9 +162,50 @@ footer { visibility: hidden; }
     color: #0f172a;
     letter-spacing: 0.06em;
     text-transform: uppercase;
-    padding: 20px 0 10px;
-    border-bottom: 2px solid #1c69d4;
+    padding: 20px 0 12px;
     margin-bottom: 16px;
+    position: relative;
+}
+.section-header::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    height: 2px;
+    background: #1c3d5a;
+    opacity: 0.55;
+}
+
+/* -- Status bar -- */
+.status-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 11px;
+    color: #64748b;
+    letter-spacing: 0.04em;
+    margin: -4px 0 18px;
+}
+.status-bar .sep { color: #cbd5e1; }
+.status-bar .mono {
+    font-family: 'JetBrains Mono', 'Roboto Mono', monospace;
+    font-weight: 600;
+    color: #0f172a;
+}
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #16a34a;
+    flex-shrink: 0;
+    box-shadow: 0 0 0 0 rgba(22,163,74,0.55);
+    animation: status-pulse 2s infinite;
+}
+@keyframes status-pulse {
+    0%   { box-shadow: 0 0 0 0 rgba(22,163,74,0.55); }
+    70%  { box-shadow: 0 0 0 6px rgba(22,163,74,0); }
+    100% { box-shadow: 0 0 0 0 rgba(22,163,74,0); }
 }
 
 /* ── Tarjetas KPI ───────────────────────────── */
@@ -96,8 +213,13 @@ footer { visibility: hidden; }
     background: #ffffff;
     border-radius: 6px;
     padding: 16px 18px;
-    border-top: 3px solid #1c69d4;
+    border-top: 3px solid #1c3d5a;
     box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    transition: transform .15s ease, box-shadow .15s ease;
+}
+.kpi-wrap:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(15,23,42,0.08);
 }
 .kpi-label {
     font-size: 10px;
@@ -108,7 +230,9 @@ footer { visibility: hidden; }
     margin-bottom: 6px;
 }
 .kpi-value {
-    font-size: 20px;
+    font-family: 'JetBrains Mono', 'Inter', monospace;
+    font-variant-numeric: tabular-nums;
+    font-size: 19px;
     font-weight: 700;
     color: #0f172a;
     line-height: 1;
@@ -126,6 +250,10 @@ footer { visibility: hidden; }
     padding: 16px;
     box-shadow: 0 1px 4px rgba(0,0,0,0.06);
     margin-bottom: 16px;
+    transition: box-shadow .15s ease;
+}
+.chart-card:hover {
+    box-shadow: 0 4px 14px rgba(15,23,42,0.07);
 }
 
 /* ── Insight box ────────────────────────────── */
@@ -193,8 +321,8 @@ footer { visibility: hidden; }
     border-radius: 3px;
 }
 .pill-bmw  { background: #dbeafe; color: #1d4ed8; }
-.pill-audi { background: #fee2e2; color: #991b1b; }
-.pill-mb   { background: #f1f5f9; color: #475569; }
+.pill-audi { background: #dcfce7; color: #15803d; }
+.pill-mb   { background: #fee2e2; color: #dc2626; }
 
 /* ── Chat ───────────────────────────────────── */
 .chat-container {
@@ -270,9 +398,9 @@ DATA_SCHEMA_VERSION = "2026-06-10-master-segment-high-performance-published-date
 
 COLORS = {
     "BMW": "#1c69d4",
-    "Audi": "#bb0a14",
-    "Mercedes": "#6b7271",
-    "Mercedes-Benz": "#6b7271",
+    "Audi": "#15803d",
+    "Mercedes": "#dc2626",
+    "Mercedes-Benz": "#dc2626",
 }
 FUEL_COLORS = {
     "ICE":  "#64748b",
@@ -913,7 +1041,7 @@ def charts_stock(df):
         fig3 = px.bar(all_m.head(10), y="Modelo_norm", x="N", orientation="h",
                       title="Top 10 modelos por unidades",
                       labels={"N": "Unidades", "Modelo_norm": ""},
-                      color="N", color_continuous_scale=["#bfdbfe", "#1c69d4"])
+                      color="N", color_continuous_scale=["#cbd5e1", "#0f172a"])
         fig3.update_layout(coloraxis_showscale=False,
                            yaxis=dict(autorange="reversed", tickfont_size=10))
         st.plotly_chart(fig_base(fig3, 340), width="stretch")
@@ -925,7 +1053,7 @@ def charts_stock(df):
         fig4 = px.bar(all_d.head(10), y="Concesionario", x="N", orientation="h",
                       title="Top 10 concesionarios",
                       labels={"N": "Unidades", "Concesionario": ""},
-                      color="N", color_continuous_scale=["#bfdbfe", "#1c69d4"])
+                      color="N", color_continuous_scale=["#cbd5e1", "#0f172a"])
         fig4.update_layout(coloraxis_showscale=False,
                            yaxis=dict(autorange="reversed", tickfont_size=10))
         st.plotly_chart(fig_base(fig4, 340), width="stretch")
@@ -936,7 +1064,7 @@ def charts_stock(df):
         top_c = df.groupby("Ciudad").size().reset_index(name="N").sort_values("N", ascending=False).head(20)
         fig5 = px.bar(top_c, x="Ciudad", y="N",
                       title="Top 20 ciudades por stock",
-                      color="N", color_continuous_scale=["#bfdbfe", "#1c69d4"],
+                      color="N", color_continuous_scale=["#cbd5e1", "#0f172a"],
                       labels={"N": "Unidades", "Ciudad": ""})
         fig5.update_layout(coloraxis_showscale=False, xaxis_tickangle=-35)
         st.plotly_chart(fig_base(fig5, 300), width="stretch")
@@ -1038,7 +1166,7 @@ def charts_precios(df):
         fig3 = px.bar(grp, y="Modelo_norm", x="mean", orientation="h",
                       title="Precio medio — top 15 modelos (≥3 uds.)",
                       labels={"mean":"Precio medio (€)","Modelo_norm":""},
-                      color="mean", color_continuous_scale=["#bfdbfe","#1c69d4"],
+                      color="mean", color_continuous_scale=["#cbd5e1","#0f172a"],
                       text=grp["mean"].map(eur))
         fig3.update_traces(textposition="outside", textfont_size=10)
         fig3.update_layout(coloraxis_showscale=False, yaxis=dict(autorange="reversed", tickfont_size=10))
@@ -1099,7 +1227,7 @@ def charts_cuotas(df):
         fig3 = px.bar(grp, y="Modelo_norm", x="mean", orientation="h",
                       title="Cuota media más baja — top 15 modelos",
                       labels={"mean":"€/mes","Modelo_norm":""},
-                      color="mean", color_continuous_scale=["#1c69d4","#bfdbfe"],
+                      color="mean", color_continuous_scale=["#0f172a","#cbd5e1"],
                       text=grp["mean"].map(eur))
         fig3.update_traces(textposition="outside", textfont_size=10)
         fig3.update_layout(coloraxis_showscale=False, yaxis=dict(tickfont_size=10))
@@ -1848,6 +1976,22 @@ def show_chatbot(df):
 def main():
     show_header()
     df_raw = load_data()
+
+    csv_path = BASE / "STOCK_UNIFICADO_GLOBAL.csv"
+    updated = (
+        datetime.fromtimestamp(csv_path.stat().st_mtime).strftime("%d/%m/%Y %H:%M")
+        if csv_path.exists() else "—"
+    )
+    st.markdown(
+        f'<div class="status-bar"><span class="status-dot"></span>'
+        f'<span>SISTEMA EN VIVO</span><span class="sep">·</span>'
+        f'<span>Datos actualizados: <span class="mono">{updated}</span></span>'
+        f'<span class="sep">·</span>'
+        f'<span><span class="mono">{eu_num(len(df_raw))}</span> vehículos en base</span>'
+        f'</div>',
+        unsafe_allow_html=True,
+    )
+
     df = sidebar_filters(df_raw)
 
     if df.empty:

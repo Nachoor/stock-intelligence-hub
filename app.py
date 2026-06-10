@@ -232,11 +232,12 @@ div[data-baseweb="popover"] li:hover {
 .kpi-value {
     font-family: 'JetBrains Mono', 'Inter', monospace;
     font-variant-numeric: tabular-nums;
-    font-size: 17px;
+    font-size: 15px;
     font-weight: 700;
     color: #0f172a;
     line-height: 1.2;
     margin-bottom: 4px;
+    letter-spacing: -0.03em;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;

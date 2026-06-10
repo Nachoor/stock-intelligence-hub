@@ -90,6 +90,50 @@ def to_str(val):
     return str(val)
 
 
+def parse_es_number(s):
+    """Convierte '23.214,30' -> 23214.30 (formato numérico español)."""
+    if s is None:
+        return None
+    s = str(s).strip()
+    if not s:
+        return None
+    s = s.replace(".", "").replace(",", ".")
+    try:
+        return float(s)
+    except ValueError:
+        return None
+
+
+import re
+
+FIN_PATTERNS = {
+    "tin":    re.compile(r"TIN:\s*([\d.,]+)\s*%"),
+    "tae":    re.compile(r"TAE:\s*([\d.,]+)\s*%"),
+    "plazo":  re.compile(r"Plazo\s*(\d+)\s*meses"),
+    "final":  re.compile(r"cuota final en el mes\s*\d+\s*de\s*([\d.,]+)\s*€", re.IGNORECASE),
+    "entrada": re.compile(r"Entrada inicial:\s*([\d.,]+)\s*€", re.IGNORECASE),
+}
+
+
+def parse_financing_disclaimer(text):
+    """Extrae TIN, TAE, Entrada, Cuota final y Plazo del texto legal de financiación."""
+    out = {"tin": None, "tae": None, "entrada": None, "cuota_final": None, "plazo": None}
+    if not text:
+        return out
+    clean = re.sub(r"<[^>]+>", "", str(text))
+    m = FIN_PATTERNS["tin"].search(clean)
+    if m: out["tin"] = parse_es_number(m.group(1))
+    m = FIN_PATTERNS["tae"].search(clean)
+    if m: out["tae"] = parse_es_number(m.group(1))
+    m = FIN_PATTERNS["entrada"].search(clean)
+    if m: out["entrada"] = parse_es_number(m.group(1))
+    m = FIN_PATTERNS["final"].search(clean)
+    if m: out["cuota_final"] = parse_es_number(m.group(1))
+    m = FIN_PATTERNS["plazo"].search(clean)
+    if m: out["plazo"] = int(m.group(1))
+    return out
+
+
 def format_epoch_ms(value):
     if not value:
         return ""
@@ -137,13 +181,21 @@ def parse_vehicle(v):
     # Precio
     pvp         = safe_get(v, "priceDetails", "totalPrices", "customer", "grossAmount")
     pvp_label   = safe_get(v, "priceDetails", "totalPrices", "customer", "metaInfo", "label")
-    cuota_rate  = safe_get(v, "typedPrices", "rate")
-    # financing object
+    # cuota/mes: typedPrices es una lista de {amount, type, ...}; buscamos type == "rate"
+    cuota_rate  = None
+    for tp in (v.get("typedPrices") or []):
+        if isinstance(tp, dict) and tp.get("type") == "rate":
+            cuota_rate = tp.get("amount")
+            break
+    # financing: los datos (TAE/TIN/Entrada/Cuota final/Plazo) vienen en el texto
+    # legal "calculationDisclaimer", no como campos directos
     fin         = v.get("financing") or {}
-    tae         = safe_get(fin, "tae")
-    tin         = safe_get(fin, "tin")
-    entrada     = safe_get(fin, "deposit")
-    meses       = safe_get(fin, "term")
+    fin_data    = parse_financing_disclaimer(fin.get("calculationDisclaimer"))
+    tae         = fin_data["tae"]
+    tin         = fin_data["tin"]
+    entrada     = fin_data["entrada"]
+    cuota_final = fin_data["cuota_final"]
+    meses       = fin_data["plazo"]
 
     # Disponibilidad
     avail_code  = safe_get(v, "availableFromCode")   # "now" | "soon" | ...
@@ -202,6 +254,7 @@ def parse_vehicle(v):
         "pvp_eur":        float(pvp) if pvp else None,
         "pvp_label":      pvp_label,
         "cuota_mes_eur":  float(cuota_rate) if cuota_rate else None,
+        "cuota_final_eur": float(cuota_final) if cuota_final else None,
         "tae":            float(tae) if tae else None,
         "tin":            float(tin) if tin else None,
         "entrada_eur":    float(entrada) if entrada else None,
@@ -268,7 +321,7 @@ HEADERS = [
     "Tipo", "Modelo", "Versión", "Carline", "Año", "Trim",
     "Carrocería", "Combustible", "Cambio", "Potencia", "Tracción",
     "Color Ext.", "Código Color", "Color Int.", "Tapizado",
-    "PVP (€)", "Etiqueta Precio", "Cuota/mes (€)", "TAE (%)", "TIN (%)",
+    "PVP (€)", "Etiqueta Precio", "Cuota/mes (€)", "Cuota Final (€)", "TAE (%)", "TIN (%)",
     "Entrada (€)", "Plazo (meses)",
     "Disponibilidad", "Texto Entrega", "Fecha Disponible", "Fecha Publicacion",
     "Concesionario", "Ciudad", "ID Dealer", "Email Dealer",
@@ -279,7 +332,7 @@ FIELD_MAP = [
     "tipo", "modelo", "version", "carline", "año", "trimline",
     "carroceria", "combustible", "cambio", "potencia", "traccion",
     "color_ext", "codigo_color", "color_int", "tapizado",
-    "pvp_eur", "pvp_label", "cuota_mes_eur", "tae", "tin",
+    "pvp_eur", "pvp_label", "cuota_mes_eur", "cuota_final_eur", "tae", "tin",
     "entrada_eur", "plazo_meses",
     "disponibilidad", "entrega_texto", "fecha_disponible", "fecha_publicacion",
     "concesionario", "ciudad", "dealer_id", "email_dealer",
@@ -290,7 +343,7 @@ WIDTHS = [
     8, 35, 40, 14, 6, 16,
     14, 14, 12, 10, 10,
     18, 14, 16, 12,
-    12, 20, 14, 8, 8,
+    12, 20, 14, 14, 8, 8,
     12, 12,
     14, 50, 14, 18,
     35, 20, 10, 28,
@@ -323,7 +376,7 @@ def save_excel(cars, path):
         for col_i, field in enumerate(FIELD_MAP, 1):
             val = car.get(field, "")
             # Empty string → None for numeric columns
-            if val == "" and field in ("pvp_eur", "cuota_mes_eur", "tae", "tin", "entrada_eur", "plazo_meses", "año"):
+            if val == "" and field in ("pvp_eur", "cuota_mes_eur", "cuota_final_eur", "tae", "tin", "entrada_eur", "plazo_meses", "año"):
                 val = None
             # Safety net: convert any remaining dict/list to string
             if isinstance(val, (dict, list)):

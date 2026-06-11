@@ -279,14 +279,28 @@ def parse_vehicle(v):
 # SCRAPING
 # ═══════════════════════════════════════════════════════
 
+def get_with_retry(session, url, params, timeout, retries=5):
+    last_exc = None
+    for attempt in range(1, retries + 1):
+        try:
+            r = session.get(url, params=params, timeout=timeout)
+            r.raise_for_status()
+            return r
+        except Exception as e:
+            last_exc = e
+            wait = 5 * attempt
+            print(f"  ⚠ Intento {attempt}/{retries} fallido ({e}). Reintentando en {wait}s...")
+            time.sleep(wait)
+    raise last_exc
+
+
 def fetch_all_vehicles(session):
     """Pagina por la API SCS y devuelve todos los vehicleBasic."""
     url = f"{SCS_BASE}/{SCS_VERSION}/search/filter/{SCS_MARKET}"
     params_base = {"sort": "prices.retail:asc", "size": PAGE_SIZE}
 
     # Primer request para saber el total
-    r = session.get(url, params={**params_base, "from": 0}, timeout=20)
-    r.raise_for_status()
+    r = get_with_retry(session, url, {**params_base, "from": 0}, timeout=20)
     first = r.json()
     total = first.get("totalCount", 0)
     print(f"  Total vehículos en API: {total}")
@@ -300,8 +314,7 @@ def fetch_all_vehicles(session):
         from_idx = page * PAGE_SIZE
         time.sleep(DELAY)
         try:
-            r = session.get(url, params={**params_base, "from": from_idx}, timeout=20)
-            r.raise_for_status()
+            r = get_with_retry(session, url, {**params_base, "from": from_idx}, timeout=20)
             batch = r.json().get("vehicleBasic", [])
             all_raw.extend(batch)
             print(f"  Página {page+1}/{pages}: {len(batch)} coches (from={from_idx}, total acum={len(all_raw)})")
@@ -443,14 +456,26 @@ def main():
 
     print("\n[1/3] Conectando con la API SCS de Audi...")
     session = make_session()
-    # Quick test
-    r = session.get(
-        f"{SCS_BASE}/{SCS_VERSION}/search/filter/{SCS_MARKET}",
-        params={"from": 0, "size": 1, "sort": "prices.retail:asc"},
-        timeout=10
-    )
-    r.raise_for_status()
-    print(f"  ✓ API accesible (status {r.status_code})")
+    # Quick test (con reintentos: la API a veces da 403 puntual a IPs de datacenter)
+    last_exc = None
+    for attempt in range(1, 6):
+        try:
+            r = session.get(
+                f"{SCS_BASE}/{SCS_VERSION}/search/filter/{SCS_MARKET}",
+                params={"from": 0, "size": 1, "sort": "prices.retail:asc"},
+                timeout=10
+            )
+            r.raise_for_status()
+            print(f"  ✓ API accesible (status {r.status_code})")
+            last_exc = None
+            break
+        except Exception as e:
+            last_exc = e
+            wait = 5 * attempt
+            print(f"  ⚠ Intento {attempt}/5 fallido ({e}). Reintentando en {wait}s...")
+            time.sleep(wait)
+    if last_exc is not None:
+        raise last_exc
 
     print("\n[2/3] Descargando todos los vehículos...")
     raw_vehicles, total = fetch_all_vehicles(session)

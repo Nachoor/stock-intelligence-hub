@@ -62,11 +62,15 @@ jobs:
             echo "No dataset changes to commit."
           else
             git commit -m "Daily stock dataset update"
+            # Limpia cualquier cambio sin commitear (xlsx generados, etc.)
+            # para que git pull --rebase no falle por "unstaged changes".
+            git stash --include-untracked || true
             for i in 1 2 3 4 5; do
               git pull --rebase origin main && git push && break
               echo "Push failed, retrying ($i)..."
               sleep 5
             done
+            git stash drop || true
           fi
 
       - name: Notify failure with GitHub issue

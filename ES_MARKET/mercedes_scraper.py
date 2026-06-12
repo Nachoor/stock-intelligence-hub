@@ -246,6 +246,47 @@ def extract_publication_date(text):
             return normalize_date_text(match.group(1))
     return ""
 
+
+def _num(raw):
+    return raw.replace(".", "").replace(",", ".") if raw else ""
+
+
+def parse_financing_info(text):
+    """
+    Extrae Entrada, Cuota Final, TIN y Plazo (nº de cuotas) del bloque de
+    condiciones de financiación, p.ej.:
+    "Entrada: 6.000,00€ | Cuota final: 27.252,07€ | TIN: 8,75% | TAE: 10,31% |
+     Importe a financiar: 47.539,01€ | Plazo: 49 meses | 48 cuotas de 704,60€ | ..."
+    Devuelve dict con claves entrada_eur, cuota_final_eur, tin_pct, plazo_meses
+    (vacías si no se encuentran).
+    """
+    info = {"entrada_eur": "", "cuota_final_eur": "", "tin_pct": "", "plazo_meses": ""}
+
+    m = re.search(r"Entrada:\s*([\d.,]+)\s*€", text, re.IGNORECASE)
+    if m:
+        info["entrada_eur"] = _num(m.group(1))
+
+    m = re.search(r"Cuota final:\s*([\d.,]+)\s*€", text, re.IGNORECASE)
+    if m:
+        info["cuota_final_eur"] = _num(m.group(1))
+
+    m = re.search(r"TIN:\s*([\d.,]+)\s*%", text, re.IGNORECASE)
+    if m:
+        info["tin_pct"] = m.group(1).replace(",", ".")
+
+    # Numero de cuotas mensuales (preferido sobre "Plazo: N meses",
+    # que en MB incluye el mes de la cuota final).
+    m = re.search(r"(\d+)\s*cuotas de\s*[\d.,]+\s*€", text, re.IGNORECASE)
+    if m:
+        info["plazo_meses"] = m.group(1)
+    else:
+        m = re.search(r"Plazo:\s*(\d+)\s*meses", text, re.IGNORECASE)
+        if m:
+            info["plazo_meses"] = m.group(1)
+
+    return info
+
+
 def parse_page(html, dealer_name, dealer_city, dealer_state, base_domain):
     """
     Extrae todos los coches de una página HTML del showroom.
@@ -298,11 +339,15 @@ def parse_page(html, dealer_name, dealer_city, dealer_state, base_domain):
             fecha_publicacion = extract_publication_date(card.get_text(" ", strip=True))
 
             tae = ""
+            financing = {"entrada_eur": "", "cuota_final_eur": "", "tin_pct": "", "plazo_meses": ""}
             for p in card.find_all("p", class_=lambda c: c and "fuente1" in c):
-                tae_m = re.search(r"TAE:\s*([\d.,]+)%", p.get_text(strip=True))
-                if tae_m:
-                    tae = tae_m.group(1)
-                    break
+                p_text = p.get_text(" ", strip=True)
+                if not tae:
+                    tae_m = re.search(r"TAE:\s*([\d.,]+)%", p_text)
+                    if tae_m:
+                        tae = tae_m.group(1)
+                if "Entrada:" in p_text or "Cuota final:" in p_text or "TIN:" in p_text:
+                    financing = parse_financing_info(p_text)
 
             cars.append({
                 "concesionario": dealer_name,
@@ -315,6 +360,10 @@ def parse_page(html, dealer_name, dealer_city, dealer_state, base_domain):
                 "pvp_eur":       pvp,
                 "cuota_mes_eur": cuota,
                 "tae_pct":       tae,
+                "entrada_eur":      financing["entrada_eur"],
+                "cuota_final_eur":  financing["cuota_final_eur"],
+                "tin_pct":          financing["tin_pct"],
+                "plazo_meses":      financing["plazo_meses"],
                 "motor":         motor,
                 "estado":        estado,
                 "fecha_publicacion": fecha_publicacion,
@@ -416,13 +465,19 @@ def scrape_dealer(session, dealer):
 
 
 def enrich_missing_prices_from_detail(session, cars):
-    """Fill missing PVP/monthly values from detail pages when cards only show renting."""
-    targets = [c for c in cars if c.get("url_coche") and (not c.get("pvp_eur") or not c.get("cuota_mes_eur"))]
+    """Fill missing PVP/monthly/financing values from detail pages."""
+    targets = [
+        c for c in cars
+        if c.get("url_coche") and (
+            not c.get("pvp_eur") or not c.get("cuota_mes_eur") or not c.get("entrada_eur")
+        )
+    ]
     if not targets:
         return cars
 
     updated_pvp = 0
     updated_monthly = 0
+    updated_financing = 0
     for i, car in enumerate(targets, 1):
         try:
             r = session.get(car["url_coche"], timeout=20)
@@ -444,15 +499,30 @@ def enrich_missing_prices_from_detail(session, cars):
                 if cuota_m:
                     car["cuota_mes_eur"] = cuota_m.group(1).replace(".", "").replace(",", ".")
                     updated_monthly += 1
+
+            if not car.get("entrada_eur"):
+                financing = parse_financing_info(text)
+                if financing["entrada_eur"]:
+                    car["entrada_eur"] = financing["entrada_eur"]
+                    car["cuota_final_eur"] = financing["cuota_final_eur"]
+                    car["tin_pct"] = financing["tin_pct"]
+                    car["plazo_meses"] = financing["plazo_meses"]
+                    if not car.get("tae_pct"):
+                        tae_m = re.search(r"TAE:\s*([\d.,]+)\s*%", text, re.IGNORECASE)
+                        if tae_m:
+                            car["tae_pct"] = tae_m.group(1).replace(",", ".")
+                    updated_financing += 1
         except Exception:
             pass
 
         if i % 25 == 0:
             print(f"\r  Enriqueciendo fichas Mercedes: {i}/{len(targets)} "
-                  f"| PVP +{updated_pvp} | Cuotas +{updated_monthly}", end="", flush=True)
+                  f"| PVP +{updated_pvp} | Cuotas +{updated_monthly} | Financiacion +{updated_financing}",
+                  end="", flush=True)
         time.sleep(DELAY)
 
-    print(f"\n  Enriquecimiento fichas: PVP +{updated_pvp}, cuotas +{updated_monthly}")
+    print(f"\n  Enriquecimiento fichas: PVP +{updated_pvp}, cuotas +{updated_monthly}, "
+          f"financiacion +{updated_financing}")
     return cars
 
 
@@ -464,6 +534,7 @@ HEADERS = [
     "Concesionario", "Ciudad", "Provincia", "Tipo",
     "Modelo", "Versión", "Color",
     "PVP (€)", "Cuota/mes (€)", "TAE (%)",
+    "Entrada (€)", "Cuota Final (€)", "TIN (%)", "Plazo (meses)",
     "Motor/Combustible", "Estado", "Fecha Publicacion", "URL Coche",
 ]
 
@@ -471,10 +542,11 @@ FIELD_MAP = [
     "concesionario", "ciudad", "provincia", "tipo",
     "modelo", "version", "color",
     "pvp_eur", "cuota_mes_eur", "tae_pct",
+    "entrada_eur", "cuota_final_eur", "tin_pct", "plazo_meses",
     "motor", "estado", "fecha_publicacion", "url_coche",
 ]
 
-COL_WIDTHS = [30, 16, 16, 10, 40, 45, 14, 12, 14, 8, 30, 20, 18, 65]
+COL_WIDTHS = [30, 16, 16, 10, 40, 45, 14, 12, 14, 8, 12, 14, 8, 12, 30, 20, 18, 65]
 
 
 def save_excel(cars, dealers, path):
@@ -499,7 +571,8 @@ def save_excel(cars, dealers, path):
     for row_i, car in enumerate(cars, 2):
         for col_i, field in enumerate(FIELD_MAP, 1):
             raw = car.get(field, "")
-            if field in ("pvp_eur", "cuota_mes_eur", "tae_pct"):
+            if field in ("pvp_eur", "cuota_mes_eur", "tae_pct",
+                          "entrada_eur", "cuota_final_eur", "tin_pct", "plazo_meses"):
                 try:
                     val = float(raw) if raw else None
                 except ValueError:

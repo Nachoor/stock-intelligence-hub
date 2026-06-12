@@ -636,7 +636,7 @@ def _post_normalize(df):
             df["Modelo_norm"] = df["Modelo_norm"].map(clean_model_name)
         df["Modelo"] = df["Modelo_norm"]
 
-    for c in ["PVP", "Cuota_mes", "TAE", "TIN", "Año"]:
+    for c in ["PVP", "Cuota_mes", "TAE", "TIN", "Entrada", "Cuota_final", "Plazo", "Año"]:
         if c in df.columns:
             df[c] = pd.to_numeric(df[c], errors="coerce")
     for c in ["Marca", "Mercado", "Modelo_norm", "Modelo", "Versión", "Fecha", "Fecha Publicacion", "Fuel_type", "Carrocería", "Segment", "High_Performance", "Concesionario", "Ciudad", "Provincia"]:
@@ -677,6 +677,9 @@ def _norm_csv(df):
         "RRP_EUR":       "PVP",
         "Monthly_EUR":   "Cuota_mes",
         "APR_pct":       "TAE",
+        "Deposit_EUR":   "Entrada",
+        "Final_Installment_EUR": "Cuota_final",
+        "Term_Months":   "Plazo",
         "Availability":  "Estado",
         "Engine_Raw":    "Motor",
     })

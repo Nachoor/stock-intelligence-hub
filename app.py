@@ -40,9 +40,23 @@ html, body, [class*="css"] {
     font-family: 'Inter', sans-serif;
 }
 
-/* Fondo general */
+/* ── Paleta corporativa premium ──────────────
+   Azul oscuro principal : #071D3A
+   Azul corporativo       : #0057B8
+   Azul claro / acento    : #4A90E2
+   Fondo general          : #F5F7FA
+   Blanco tarjetas        : #FFFFFF
+   Texto principal        : #111827
+   Texto secundario       : #6B7280
+   Bordes suaves          : #E5E7EB
+   Verde positivo         : #008A3D
+   Rojo negativo          : #D64545
+   Gris neutro            : #9CA3AF
+──────────────────────────────────────────── */
+
+/* Fondo general de la app */
 .stApp {
-    background: #f1f4f9;
+    background: #F5F7FA;
 }
 
 /* Ocultar header de streamlit */
@@ -51,26 +65,61 @@ div[data-testid="stToolbar"] { display: none; }
 #MainMenu { visibility: hidden; }
 footer { visibility: hidden; }
 
-/* Header — ocupa todo el ancho del bloque de contenido */
-.app-header {
-    display: block !important;
+/* ── Header corporativo (sustituye al header.png) ──
+   Banda azul oscura degradada, ocupa todo el ancho */
+.app-header-bar {
+    display: flex !important;
+    align-items: center;
+    justify-content: space-between;
     width: calc(100% + 160px) !important;
     max-width: calc(100% + 160px) !important;
     margin-left: -80px !important;
     margin-right: -80px !important;
     margin-top: -96px !important;
     margin-bottom: 1.5rem !important;
+    padding: 0 40px;
+    height: 88px;
+    background: linear-gradient(135deg, #071D3A 0%, #0A2A52 60%, #0057B8 100%);
+    box-shadow: 0 2px 10px rgba(7,29,58,0.18);
 }
+.app-header-text { display: flex; flex-direction: column; gap: 4px; }
+.app-header-title {
+    color: #FFFFFF;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    margin: 0;
+}
+.app-header-logo-mark {
+    display: flex;
+    align-items: center;
+    margin-top: 2px;
+}
+.app-header-logo-mark svg { width: 48px; height: 20px; }
+.app-header-right {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+}
+.app-header-update {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #C9D9F0;
+    font-size: 11.5px;
+    white-space: nowrap;
+}
+.app-header-update svg { width: 14px; height: 14px; stroke: #C9D9F0; }
 
-/* ── Sidebar ────────────────────────────────── */
+/* ── Sidebar: fondo claro y bloques agrupados ─ */
 [data-testid="stSidebar"] {
-    background: #0d1b2a;
-    border-right: 1px solid #1e3050;
+    background: #FFFFFF;
+    border-right: 1px solid #E5E7EB;
 }
 [data-testid="stSidebar"] .stMarkdown p,
 [data-testid="stSidebar"] label,
 [data-testid="stSidebar"] .stCheckbox span {
-    color: #94a3b8 !important;
+    color: #6B7280 !important;
     font-size: 12px;
 }
 [data-testid="stSidebar"] h1,
@@ -79,87 +128,116 @@ footer { visibility: hidden; }
 [data-testid="stSidebar"] h4,
 [data-testid="stSidebar"] h5,
 [data-testid="stSidebar"] h6 {
-    color: #e2e8f0 !important;
+    color: #111827 !important;
 }
 [data-testid="stSidebar"] label p {
-    color: #cbd5e1 !important;
+    color: #374151 !important;
     font-size: 12px;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.05em;
 }
 [data-testid="stSidebar"] .stMultiSelect [data-baseweb="tag"] {
-    background: #1c69d4;
+    background: #0057B8;
 }
 [data-testid="stSidebar"] hr {
-    border-color: #1e3050;
+    border-color: #E5E7EB;
+    margin: 18px 0;
+}
+
+/* Título del sidebar */
+.sidebar-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 16px;
+    font-weight: 700;
+    color: #071D3A;
+    margin: 4px 0 18px;
+}
+.sidebar-title svg { width: 18px; height: 18px; stroke: #0057B8; }
+
+/* Bloques de filtros agrupados: "Filtros principales", "Ubicación", etc. */
+.sidebar-block-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: #071D3A;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin: 4px 0 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid #E5E7EB;
 }
 
 /* -- Inputs del sidebar (selects, sliders, checkboxes) -- */
 [data-testid="stSidebar"] div[data-baseweb="select"] > div {
-    background: #13283c;
-    border-color: #1e3050 !important;
-    border-radius: 6px;
+    background: #F9FAFB;
+    border-color: #E5E7EB !important;
+    border-radius: 8px;
 }
 [data-testid="stSidebar"] div[data-baseweb="select"] > div:hover {
-    border-color: #1c69d4 !important;
+    border-color: #4A90E2 !important;
 }
 [data-testid="stSidebar"] div[data-baseweb="select"] div,
 [data-testid="stSidebar"] div[data-baseweb="select"] span,
 [data-testid="stSidebar"] div[data-baseweb="select"] input {
-    color: #e2e8f0 !important;
+    color: #111827 !important;
 }
 [data-testid="stSidebar"] div[data-baseweb="select"] svg {
-    fill: #cbd5e1 !important;
+    fill: #6B7280 !important;
 }
 div[data-baseweb="popover"] li {
     font-size: 12px;
 }
 div[data-baseweb="popover"] li:hover {
-    background: #eff6ff;
+    background: #EAF2FB;
 }
 
-/* Boton "Borrar todos los filtros" */
+/* Botón "Limpiar filtros" */
 [data-testid="stSidebar"] .stButton > button {
-    background: transparent;
-    border: 1px solid #1e3050;
-    color: #94a3b8;
-    border-radius: 6px;
+    background: #FFFFFF;
+    border: 1px solid #0057B8;
+    color: #0057B8;
+    border-radius: 8px;
     font-size: 12px;
-    font-weight: 500;
+    font-weight: 600;
+    width: 100%;
     transition: border-color .15s ease, color .15s ease, background .15s ease;
 }
 [data-testid="stSidebar"] .stButton > button:hover {
-    border-color: #1c69d4;
-    color: #1c69d4;
-    background: rgba(28, 105, 212, 0.08);
+    border-color: #0057B8;
+    color: #FFFFFF;
+    background: #0057B8;
 }
 [data-testid="stSidebar"] .stButton > button:focus:not(:active) {
-    border-color: #1c69d4;
-    color: #1c69d4;
+    border-color: #0057B8;
+    color: #0057B8;
 }
 
 /* Sliders */
 [data-testid="stSidebar"] .stSlider [data-baseweb="slider"] [role="slider"] {
-    background-color: #1c69d4 !important;
-    border-color: #1c69d4 !important;
+    background-color: #0057B8 !important;
+    border-color: #0057B8 !important;
+}
+[data-testid="stSidebar"] .stSlider div[data-baseweb="slider"] > div > div {
+    background: #4A90E2 !important;
 }
 [data-testid="stSidebar"] .stSlider div[data-testid="stTickBarMin"],
 [data-testid="stSidebar"] .stSlider div[data-testid="stTickBarMax"] {
-    color: #64748b;
+    color: #9CA3AF;
     font-size: 10px;
 }
 
 /* Checkboxes */
 [data-testid="stSidebar"] input[type="checkbox"] {
-    accent-color: #1c69d4;
+    accent-color: #0057B8;
 }
 
-/* ── Títulos de sección ─────────────────────── */
+/* ── Títulos de sección (zona principal) ─────── */
 .section-header {
     font-size: 13px;
-    font-weight: 600;
-    color: #0f172a;
+    font-weight: 700;
+    color: #071D3A;
     letter-spacing: 0.06em;
     text-transform: uppercase;
     padding: 20px 0 12px;
@@ -173,8 +251,8 @@ div[data-baseweb="popover"] li:hover {
     bottom: 0;
     width: 100%;
     height: 2px;
-    background: #1c3d5a;
-    opacity: 0.55;
+    background: #4A90E2;
+    opacity: 0.35;
 }
 
 /* -- Status bar -- */
@@ -183,106 +261,342 @@ div[data-baseweb="popover"] li:hover {
     align-items: center;
     gap: 10px;
     font-size: 11px;
-    color: #64748b;
+    color: #6B7280;
     letter-spacing: 0.04em;
     margin: -4px 0 18px;
 }
-.status-bar .sep { color: #cbd5e1; }
+.status-bar .sep { color: #E5E7EB; }
 .status-bar .mono {
     font-family: 'JetBrains Mono', 'Roboto Mono', monospace;
     font-weight: 600;
-    color: #0f172a;
+    color: #111827;
 }
 .status-dot {
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    background: #16a34a;
+    background: #008A3D;
     flex-shrink: 0;
-    box-shadow: 0 0 0 0 rgba(22,163,74,0.55);
+    box-shadow: 0 0 0 0 rgba(0,138,61,0.55);
     animation: status-pulse 2s infinite;
 }
 @keyframes status-pulse {
-    0%   { box-shadow: 0 0 0 0 rgba(22,163,74,0.55); }
-    70%  { box-shadow: 0 0 0 6px rgba(22,163,74,0); }
-    100% { box-shadow: 0 0 0 0 rgba(22,163,74,0); }
+    0%   { box-shadow: 0 0 0 0 rgba(0,138,61,0.55); }
+    70%  { box-shadow: 0 0 0 6px rgba(0,138,61,0); }
+    100% { box-shadow: 0 0 0 0 rgba(0,138,61,0); }
 }
 
-/* ── Tarjetas KPI ───────────────────────────── */
+/* ── Tarjetas KPI premium ─────────────────────
+   Icono circular (SVG) + label + valor + delta  */
 .kpi-wrap {
-    background: #ffffff;
-    border-radius: 6px;
-    padding: 16px 18px;
-    border-top: 3px solid #1c3d5a;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    background: #FFFFFF;
+    border-radius: 16px;
+    padding: 18px 20px;
+    border: 1px solid #E5E7EB;
+    box-shadow: 0 2px 8px rgba(15,23,42,0.04);
     transition: transform .15s ease, box-shadow .15s ease;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-height: 120px;
 }
 .kpi-wrap:hover {
     transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(15,23,42,0.08);
+    box-shadow: 0 8px 20px rgba(15,23,42,0.08);
 }
+.kpi-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: #EAF2FB;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.kpi-icon svg { width: 17px; height: 17px; stroke: #0057B8; }
 .kpi-label {
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 600;
-    color: #64748b;
-    letter-spacing: 0.07em;
-    text-transform: uppercase;
-    margin-bottom: 6px;
+    color: #6B7280;
+    letter-spacing: 0.03em;
+    margin-bottom: 2px;
+    text-transform: none;
 }
 .kpi-value {
-    font-family: 'JetBrains Mono', 'Inter', monospace;
+    font-family: 'Inter', sans-serif;
     font-variant-numeric: tabular-nums;
-    font-size: 15px;
+    font-size: 22px;
     font-weight: 700;
-    color: #0f172a;
+    color: #111827;
     line-height: 1.2;
-    margin-bottom: 4px;
-    letter-spacing: -0.03em;
+    letter-spacing: -0.01em;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 .kpi-sub {
-    font-size: 11px;
-    color: #94a3b8;
+    font-size: 12px;
+    color: #9CA3AF;
 }
+.kpi-sub.positive { color: #008A3D; font-weight: 600; }
+.kpi-sub.negative { color: #D64545; font-weight: 600; }
 
-/* ── Tarjeta gráfico ────────────────────────── */
+/* ── Tarjeta gráfico / contenedor blanco ─────── */
 .chart-card {
-    background: #ffffff;
-    border-radius: 6px;
-    padding: 16px;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
-    margin-bottom: 16px;
+    background: #FFFFFF;
+    border-radius: 16px;
+    padding: 18px;
+    border: 1px solid #E5E7EB;
+    box-shadow: 0 2px 8px rgba(15,23,42,0.04);
+    margin-bottom: 18px;
     transition: box-shadow .15s ease;
 }
 .chart-card:hover {
-    box-shadow: 0 4px 14px rgba(15,23,42,0.07);
+    box-shadow: 0 6px 18px rgba(15,23,42,0.06);
+}
+
+/* ── Indicador de carga (sustituye al spinner/icono por defecto) ── */
+@keyframes sia-spin {
+    to { transform: rotate(360deg); }
+}
+[data-testid="stStatusWidget"] {
+    background: #FFFFFF !important;
+    border: 1px solid #E5E7EB;
+    border-radius: 12px;
+    box-shadow: 0 4px 14px rgba(15,23,42,0.08);
+    padding: 6px 14px 6px 36px !important;
+    position: relative;
+}
+[data-testid="stStatusWidget"] svg {
+    display: none !important;
+}
+[data-testid="stStatusWidget"]::before {
+    content: "";
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    width: 16px;
+    height: 16px;
+    margin-top: -8px;
+    border-radius: 50%;
+    border: 2px solid #EAF2FB;
+    border-top-color: #0057B8;
+    border-right-color: #4A90E2;
+    animation: sia-spin 0.7s linear infinite;
+}
+[data-testid="stStatusWidget"] span {
+    color: #071D3A !important;
+    font-weight: 600;
+    font-size: 12px;
+}
+
+div[data-testid="stSpinner"] {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #0057B8;
+    font-weight: 600;
+    font-size: 13px;
+}
+div[data-testid="stSpinner"] > div:first-child {
+    position: relative;
+    width: 20px;
+    height: 20px;
+    flex: 0 0 auto;
+}
+div[data-testid="stSpinner"] svg {
+    display: none !important;
+}
+div[data-testid="stSpinner"] > div:first-child::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 3px solid #EAF2FB;
+    border-top-color: #0057B8;
+    border-right-color: #4A90E2;
+    animation: sia-spin 0.7s linear infinite;
+}
+
+/* ── Tarjeta para gráficas Plotly (mismo estilo que ranking/donut) ── */
+div[data-testid="stVerticalBlockBorderWrapper"] {
+    background: #FFFFFF;
+    border-radius: 16px;
+    border: 1px solid #E5E7EB;
+    box-shadow: 0 2px 8px rgba(15,23,42,0.04);
+    margin-bottom: 18px;
+    padding: 2px 6px;
+}
+div[data-testid="stVerticalBlockBorderWrapper"]:hover {
+    box-shadow: 0 6px 18px rgba(15,23,42,0.06);
 }
 
 /* ── Insight box ────────────────────────────── */
 .insight-item {
-    background: #ffffff;
-    border-left: 3px solid #1c69d4;
-    border-radius: 0 6px 6px 0;
+    background: #FFFFFF;
+    border: 1px solid #E5E7EB;
+    border-left: 4px solid #0057B8;
+    border-radius: 0 12px 12px 0;
     padding: 12px 16px;
     margin-bottom: 8px;
     font-size: 13px;
-    color: #1e293b;
+    color: #111827;
     line-height: 1.6;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    box-shadow: 0 1px 4px rgba(15,23,42,0.03);
 }
 .insight-tag {
     display: inline-block;
-    background: #1c69d4;
+    background: #0057B8;
     color: white;
     font-size: 10px;
     font-weight: 600;
     letter-spacing: 0.06em;
     padding: 2px 8px;
-    border-radius: 3px;
+    border-radius: 6px;
     margin-right: 8px;
     vertical-align: middle;
+}
+
+/* ── Ranking (sustituye a barras horizontales de Plotly) ─ */
+.rank-card-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #071D3A;
+    margin: 0 0 16px;
+    text-transform: none;
+}
+.rank-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 11px;
+}
+.rank-row:last-child { margin-bottom: 0; }
+.rank-label {
+    flex: 0 0 38%;
+    font-size: 12px;
+    color: #374151;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.rank-logo {
+    width: 18px;
+    height: 18px;
+    object-fit: contain;
+    flex: 0 0 auto;
+}
+/* ── Tabla comparador con logos en cabecera ──────────────── */
+.comp-table-wrap { overflow-x: auto; }
+.comp-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+.comp-table th, .comp-table td {
+    padding: 10px 14px;
+    border-bottom: 1px solid #EEF2F8;
+    text-align: left;
+    white-space: nowrap;
+}
+.comp-table thead th {
+    color: #6B7280;
+    font-weight: 600;
+    font-size: 12px;
+}
+.comp-table thead th span {
+    display: inline-block;
+    vertical-align: middle;
+    color: #111827;
+    font-size: 13px;
+    font-weight: 700;
+}
+.comp-table thead th .rank-logo {
+    width: 20px;
+    height: 20px;
+    margin-right: 8px;
+    vertical-align: middle;
+}
+.comp-row-label {
+    color: #6B7280;
+    font-weight: 500;
+}
+.comp-table tbody tr:last-child td { border-bottom: none; }
+.rank-track {
+    flex: 1;
+    height: 7px;
+    background: #EEF2F8;
+    border-radius: 4px;
+    overflow: hidden;
+}
+.rank-fill {
+    height: 100%;
+    border-radius: 4px;
+    background: linear-gradient(90deg, #0057B8, #4A90E2);
+}
+.rank-value {
+    flex: 0 0 auto;
+    font-size: 12px;
+    font-weight: 600;
+    color: #111827;
+    min-width: 64px;
+    text-align: right;
+}
+
+/* ── Donut (sustituye a px.pie) ──────────────── */
+.donut-wrap {
+    display: flex;
+    align-items: center;
+    gap: 28px;
+}
+.donut-ring {
+    position: relative;
+    width: 132px;
+    height: 132px;
+    border-radius: 50%;
+    flex: 0 0 auto;
+}
+.donut-hole {
+    position: absolute;
+    top: 22px;
+    left: 22px;
+    width: 88px;
+    height: 88px;
+    border-radius: 50%;
+    background: #FFFFFF;
+}
+.donut-legend {
+    flex: 1;
+    min-width: 0;
+}
+.legend-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+    font-size: 12px;
+    color: #374151;
+}
+.legend-row:last-child { margin-bottom: 0; }
+.legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 3px;
+    flex: 0 0 auto;
+}
+.legend-label {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.legend-value {
+    flex: 0 0 auto;
+    font-weight: 600;
+    color: #111827;
 }
 
 /* ── Tabla ──────────────────────────────────── */
@@ -292,28 +606,30 @@ div[data-baseweb="popover"] li:hover {
     font-size: 12px;
 }
 .vehicle-table th {
-    background: #0d1b2a;
-    color: #94a3b8;
+    background: #F5F7FA;
+    color: #6B7280;
     font-size: 10px;
-    font-weight: 600;
+    font-weight: 700;
     letter-spacing: 0.06em;
     text-transform: uppercase;
     padding: 10px 12px;
     text-align: left;
     position: sticky;
     top: 0;
+    border-bottom: 1px solid #E5E7EB;
 }
 .vehicle-table td {
     padding: 9px 12px;
-    border-bottom: 1px solid #f1f4f9;
-    color: #334155;
+    border-bottom: 1px solid #F5F7FA;
+    color: #111827;
     white-space: nowrap;
 }
-.vehicle-table tr:hover td { background: #f8fafc; }
+.vehicle-table tr:hover td { background: #F5F7FA; }
 .table-scroll {
     overflow-x: auto;
-    border-radius: 6px;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    border-radius: 16px;
+    border: 1px solid #E5E7EB;
+    box-shadow: 0 2px 8px rgba(15,23,42,0.04);
     max-height: 520px;
     overflow-y: auto;
 }
@@ -322,21 +638,22 @@ div[data-baseweb="popover"] li:hover {
     font-size: 10px;
     font-weight: 600;
     padding: 2px 8px;
-    border-radius: 3px;
+    border-radius: 6px;
 }
-.pill-bmw  { background: #dbeafe; color: #1d4ed8; }
-.pill-audi { background: #dcfce7; color: #15803d; }
-.pill-mb   { background: #fee2e2; color: #dc2626; }
+.pill-bmw  { background: #EAF2FB; color: #0057B8; }
+.pill-audi { background: #E6F4EA; color: #008A3D; }
+.pill-mb   { background: #FBEAEA; color: #D64545; }
 
 /* ── Chat ───────────────────────────────────── */
 .chat-container {
-    background: #ffffff;
-    border-radius: 6px;
+    background: #FFFFFF;
+    border-radius: 16px;
     padding: 16px;
     min-height: 320px;
     max-height: 420px;
     overflow-y: auto;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    border: 1px solid #E5E7EB;
+    box-shadow: 0 2px 8px rgba(15,23,42,0.04);
     margin-bottom: 12px;
 }
 .msg-user {
@@ -345,8 +662,8 @@ div[data-baseweb="popover"] li:hover {
 }
 .msg-user span {
     display: inline-block;
-    background: #1c69d4;
-    color: white;
+    background: #EAF2FB;
+    color: #071D3A;
     padding: 9px 14px;
     border-radius: 12px 12px 2px 12px;
     font-size: 13px;
@@ -359,40 +676,65 @@ div[data-baseweb="popover"] li:hover {
 }
 .msg-bot span {
     display: inline-block;
-    background: #f8fafc;
-    color: #1e293b;
+    background: #FFFFFF;
+    color: #111827;
     padding: 9px 14px;
     border-radius: 12px 12px 12px 2px;
     font-size: 13px;
     max-width: 82%;
-    border: 1px solid #e2e8f0;
+    border: 1px solid #E5E7EB;
     line-height: 1.6;
 }
 
-/* ── Tabs ───────────────────────────────────── */
+/* ── Tabs ─────────────────────────────────────
+   Pestaña activa: texto azul + línea inferior azul */
 .stTabs [data-baseweb="tab-list"] {
-    background: #ffffff;
-    border-radius: 6px 6px 0 0;
-    gap: 0;
-    border-bottom: 2px solid #e2e8f0;
-    padding: 0 4px;
+    background: #FFFFFF;
+    border-radius: 12px 12px 0 0;
+    gap: 4px;
+    border-bottom: 2px solid #E5E7EB;
+    padding: 4px 8px 0;
 }
 .stTabs [data-baseweb="tab"] {
-    font-size: 12px;
-    font-weight: 500;
-    padding: 10px 18px;
-    color: #64748b;
-    border-radius: 0;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 12px 18px;
+    color: #374151;
+    border-radius: 8px 8px 0 0;
     border-bottom: 2px solid transparent;
     margin-bottom: -2px;
 }
 .stTabs [aria-selected="true"] {
-    color: #1c69d4 !important;
-    border-bottom: 2px solid #1c69d4 !important;
-    background: transparent !important;
+    color: #0057B8 !important;
+    border-bottom: 2px solid #0057B8 !important;
+    background: #EAF2FB !important;
 }
 </style>
 """, unsafe_allow_html=True)
+
+# ─────────────────────────────────────────────────────────────
+# ICONOS (SVG inline estilo "outline", sin emojis)
+# ─────────────────────────────────────────────────────────────
+ICONS = {
+    "car": '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 17h14M5 17a2 2 0 1 1-4 0 2 2 0 0 1 4 0Zm14 0a2 2 0 1 1-4 0 2 2 0 0 1 4 0ZM3 17V11l2-5h12l3 5v6"/><path d="M3 11h16"/></svg>',
+    "tag": '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.59 2.59 20 10v8a2 2 0 0 1-2 2h-8L2.59 11.59a2 2 0 0 1 0-2.83l7.17-7.17a2 2 0 0 1 2.83 0Z"/><circle cx="7.5" cy="7.5" r="1.5"/></svg>',
+    "card": '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>',
+    "building": '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="1"/><path d="M9 22v-4h6v4M9 7h1M14 7h1M9 11h1M14 11h1M9 15h1M14 15h1"/></svg>',
+    "chart": '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>',
+    "trophy": '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4ZM7 6H4a2 2 0 0 0 0 4h3M17 6h3a2 2 0 0 1 0 4h-3"/></svg>',
+    "database": '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.66 3.58 3 8 3s8-1.34 8-3V5"/><path d="M4 12c0 1.66 3.58 3 8 3s8-1.34 8-3"/></svg>',
+    "pin": '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-7.5 8-12.5A8 8 0 0 0 4 9.5C4 14.5 12 22 12 22Z"/><circle cx="12" cy="9.5" r="2.5"/></svg>',
+    "percent": '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="5" x2="5" y2="19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg>',
+    "search": '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>',
+    "filter": '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3Z"/></svg>',
+    "refresh": '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36L21 8"/><path d="M21 3v5h-5"/></svg>',
+    "broom": '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 5 9 15"/><path d="M10.5 19.5 4 13l3-3 6.5 6.5a3 3 0 0 1 0 4.24 3 3 0 0 1-4.24 0Z"/><path d="m17 3 4 4"/></svg>',
+    "chat": '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10Z"/></svg>',
+    "logo": '<svg viewBox="0 0 48 20" fill="none"><path d="M2 14 8 6h4l3 8h2l3-8h4l6 8" stroke="#4A90E2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="8" cy="16" r="1.4" fill="#4A90E2"/><circle cx="40" cy="16" r="1.4" fill="#4A90E2"/><path d="M2 18h44" stroke="#0057B8" stroke-width="1" stroke-linecap="round" opacity="0.5"/></svg>',
+}
+
+def icon(name):
+    return ICONS.get(name, "")
 
 # ─────────────────────────────────────────────────────────────
 # CONSTANTES
@@ -401,10 +743,23 @@ BASE = Path(__file__).parent
 DATA_SCHEMA_VERSION = "2026-06-10-master-segment-high-performance-published-date"
 
 COLORS = {
-    "BMW": "#1c69d4",
-    "Audi": "#15803d",
-    "Mercedes": "#dc2626",
-    "Mercedes-Benz": "#dc2626",
+    "BMW": "#0057B8",
+    "Audi": "#008A3D",
+    "Mercedes": "#D64545",
+    "Mercedes-Benz": "#D64545",
+}
+
+def _logo_b64(name):
+    p = BASE / "assets" / f"logo_{name}.png"
+    if not p.exists():
+        return None
+    return base64.b64encode(p.read_bytes()).decode()
+
+_BRAND_LOGOS = {
+    "BMW": _logo_b64("bmw"),
+    "Audi": _logo_b64("audi"),
+    "Mercedes": _logo_b64("mercedes"),
+    "Mercedes-Benz": _logo_b64("mercedes"),
 }
 FUEL_COLORS = {
     "ICE":  "#64748b",
@@ -420,18 +775,140 @@ def fig_base(fig, h=310):
         template=TPL,
         height=h,
         margin=dict(l=8, r=8, t=32, b=8),
-        font=dict(family="Inter", size=11, color="#334155"),
+        font=dict(family="Inter", size=11, color="#6B7280"),
         paper_bgcolor="white",
         plot_bgcolor="white",
         separators=",.",
+        bargap=0.35,
+        colorway=["#0057B8", "#4A90E2", "#9CB8E0", "#071D3A", "#7FB3F0", "#C9D9F0"],
         legend=dict(
             orientation="h", yanchor="bottom", y=1.02,
             xanchor="right", x=1, font_size=10,
         ),
     )
-    fig.update_xaxes(showgrid=False, linecolor="#e2e8f0", tickfont_size=10)
-    fig.update_yaxes(gridcolor="#f1f4f9", linecolor="#e2e8f0", tickfont_size=10)
+    fig.update_xaxes(
+        showgrid=False, showline=False, zeroline=False,
+        ticks="", tickfont_size=10, color="#9CA3AF",
+    )
+    fig.update_yaxes(
+        showgrid=False, showline=False, zeroline=False,
+        ticks="", tickfont_size=10, color="#9CA3AF",
+    )
     return fig
+
+def plotly_card(fig, title, h=300):
+    """Envuelve una figura Plotly en una tarjeta blanca con título estilo
+    'rank-card-title' (igual que render_ranking/render_donut), sin barra de
+    herramientas ni título nativo de Plotly, para que todas las gráficas
+    compartan el mismo aspecto."""
+    fig.update_layout(title="", height=h)
+    fig.update_layout(legend=dict(
+        title="", orientation="h", yanchor="bottom", y=1.02,
+        xanchor="left", x=0, font_size=10,
+    ))
+    fig.update_layout(margin=dict(t=36))
+    with st.container(border=True):
+        st.markdown(f'<p class="rank-card-title">{title}</p>', unsafe_allow_html=True)
+        st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
+
+def model_brand_map(df):
+    """Devuelve {Modelo_norm: Marca} usando la marca más frecuente de cada modelo."""
+    if "Modelo_norm" not in df.columns or "Marca" not in df.columns:
+        return {}
+    gb = df.groupby(["Modelo_norm", "Marca"]).size().reset_index(name="N")
+    gb = gb.sort_values("N", ascending=False).drop_duplicates("Modelo_norm")
+    return dict(zip(gb["Modelo_norm"], gb["Marca"]))
+
+def render_ranking(title, rows, fmt=None, max_val=None, empty_msg="Sin datos disponibles.", colors=None, row_brands=None, show_logos=False):
+    """Lista tipo ranking con barras de progreso en HTML/CSS (sustituye a px.bar horizontal).
+
+    `colors`: dict opcional {texto: color}. Si la etiqueta de una fila contiene
+    (o coincide con) una de las claves, la barra de esa fila se pinta con ese
+    color en lugar del degradado azul por defecto (p.ej. para distinguir
+    marcas: BMW azul, Mercedes rojo, Audi verde).
+
+    `row_brands`: lista opcional (mismo largo que `rows`) con la marca de cada
+    fila ("BMW"/"Audi"/"Mercedes"...). Si se indica, la barra de esa fila se
+    pinta con el color corporativo de esa marca.
+    """
+    fmt = fmt or (lambda v: str(v))
+    rows = [(str(label), float(value)) for label, value in rows if value is not None]
+    if not rows:
+        st.markdown(
+            f'<div class="chart-card"><p class="rank-card-title">{title}</p>'
+            f'<p style="color:#9CA3AF;font-size:12px;margin:0;">{empty_msg}</p></div>',
+            unsafe_allow_html=True,
+        )
+        return
+    mx = max_val if max_val else max(v for _, v in rows)
+    mx = mx or 1
+    items_html = []
+    for i, (label, value) in enumerate(rows):
+        pct = max(2.0, min(100.0, (value / mx) * 100))
+        fill_style = "background: linear-gradient(90deg, #0057B8, #4A90E2)"
+        brand = row_brands[i] if row_brands and i < len(row_brands) else None
+        if brand:
+            c = COLORS.get(brand, "#9CA3AF")
+            fill_style = f"background:{c}"
+        elif colors:
+            c = colors.get(label)
+            if c is None:
+                c = next((v for k, v in colors.items() if k in label), None)
+            if c:
+                fill_style = f"background:{c}"
+        logo_html = ""
+        if show_logos:
+            b64 = _BRAND_LOGOS.get(brand or label)
+            if b64:
+                logo_html = f'<img class="rank-logo" src="data:image/png;base64,{b64}" />'
+        items_html.append(
+            f'<div class="rank-row">'
+            f'<div class="rank-label">{logo_html}<span>{label}</span></div>'
+            f'<div class="rank-track"><div class="rank-fill" style="width:{pct:.1f}%;{fill_style}"></div></div>'
+            f'<div class="rank-value">{fmt(value)}</div>'
+            f'</div>'
+        )
+    st.markdown(
+        f'<div class="chart-card"><p class="rank-card-title">{title}</p>{"".join(items_html)}</div>',
+        unsafe_allow_html=True,
+    )
+
+_DONUT_PALETTE = ["#0057B8", "#4A90E2", "#9CB8E0", "#071D3A", "#7FB3F0", "#C9D9F0", "#D64545", "#008A3D"]
+
+def render_donut(title, rows, colors=None, empty_msg="Sin datos disponibles."):
+    """Donut + leyenda en HTML/CSS (sustituye a px.pie)."""
+    rows = [(str(label), float(value)) for label, value in rows if value is not None and float(value) > 0]
+    if not rows:
+        st.markdown(
+            f'<div class="chart-card"><p class="rank-card-title">{title}</p>'
+            f'<p style="color:#9CA3AF;font-size:12px;margin:0;">{empty_msg}</p></div>',
+            unsafe_allow_html=True,
+        )
+        return
+    total = sum(v for _, v in rows)
+    colors = colors or {}
+    stops, legend_items, acc = [], [], 0.0
+    for i, (label, value) in enumerate(rows):
+        pct = value / total * 100
+        c = colors.get(label, _DONUT_PALETTE[i % len(_DONUT_PALETTE)])
+        stops.append(f"{c} {acc:.3f}% {acc + pct:.3f}%")
+        acc += pct
+        legend_items.append(
+            f'<div class="legend-row">'
+            f'<span class="legend-dot" style="background:{c}"></span>'
+            f'<span class="legend-label">{label}</span>'
+            f'<span class="legend-value">{pct:.1f}%</span>'
+            f'</div>'
+        )
+    gradient = ", ".join(stops)
+    st.markdown(
+        f'<div class="chart-card"><p class="rank-card-title">{title}</p>'
+        f'<div class="donut-wrap">'
+        f'<div class="donut-ring" style="background:conic-gradient({gradient})"><div class="donut-hole"></div></div>'
+        f'<div class="donut-legend">{"".join(legend_items)}</div>'
+        f'</div></div>',
+        unsafe_allow_html=True,
+    )
 
 # ─────────────────────────────────────────────────────────────
 # CARGA Y NORMALIZACIÓN DE DATOS
@@ -780,29 +1257,33 @@ def load_data():
 # ─────────────────────────────────────────────────────────────
 # HEADER
 # ─────────────────────────────────────────────────────────────
-def show_header():
-    img = BASE / "header.png"
-    if img.exists():
-        b64 = base64.b64encode(img.read_bytes()).decode()
-        st.markdown(
-            f'<img src="data:image/png;base64,{b64}" class="app-header">',
-            unsafe_allow_html=True,
-        )
-    else:
-        st.markdown(
-            '<div style="background:#07111C;padding:28px 40px;">'
-            '<span style="color:white;font-size:28px;font-weight:700;letter-spacing:3px;">STOCK</span>'
-            '<span style="color:#1c69d4;font-size:14px;letter-spacing:5px;margin-left:16px;">INTELLIGENCE HUB</span>'
-            '</div>',
-            unsafe_allow_html=True,
-        )
+def show_header(updated="—"):
+    """Header corporativo: título y logo futurista a la izquierda,
+    fecha de actualización a la derecha."""
+    st.markdown(
+        f'''
+        <div class="app-header-bar">
+            <div class="app-header-text">
+                <p class="app-header-title">Stock Intelligence App</p>
+                <div class="app-header-logo-mark">{icon("logo")}</div>
+            </div>
+            <div class="app-header-right">
+                <div class="app-header-update">
+                    {icon("refresh")}
+                    <span>Última actualización: {updated}</span>
+                </div>
+            </div>
+        </div>
+        ''',
+        unsafe_allow_html=True,
+    )
 
 # ─────────────────────────────────────────────────────────────
 # SIDEBAR — FILTROS
 # ─────────────────────────────────────────────────────────────
 def sidebar_filters(df):
     with st.sidebar:
-        st.markdown("### Filtros")
+        st.markdown(f'<div class="sidebar-title">{icon("filter")}Filtros</div>', unsafe_allow_html=True)
 
         filter_defs = [
             ("Marca", "Marca", "f_Marca"),
@@ -821,7 +1302,7 @@ def sidebar_filters(df):
         filter_keys = [key for _, _, key in filter_defs]
         range_keys = ["f_pvp_range", "f_cuota_range", "f_solo_pvp", "f_solo_cuota"]
 
-        if st.button("Borrar todos los filtros", width="stretch"):
+        if st.button("Limpiar filtros", width="stretch"):
             for key in filter_keys + range_keys:
                 st.session_state.pop(key, None)
             st.rerun()
@@ -866,19 +1347,30 @@ def sidebar_filters(df):
                 st.session_state[key] = current
             return st.multiselect(label, opts, key=key)
 
+        # ── Bloque: Filtros principales ──────────────────
+        st.markdown('<div class="sidebar-block-title">Filtros principales</div>', unsafe_allow_html=True)
         marcas     = msel("Marca",          "Marca",          "f_Marca")
-        mercados   = msel("Mercado",        "Mercado",        "f_Mercado")
         modelos    = msel("Modelo",         "Modelo_norm",    "f_Modelo_norm")
         versiones  = msel("Versión",        "Versión",        "f_Versión")
         fuels      = msel("Combustible",    "Fuel_type",      "f_Fuel_type")
         carros     = msel("Carrocería",     "Carrocería",     "f_Carrocería")
         segmentos  = msel("Segmento",       "Segment",        "f_Segment")
         high_perf  = msel("High Performance", "High_Performance", "f_High_Performance")
-        dealers    = msel("Concesionario",  "Concesionario",  "f_Concesionario")
-        ciudades   = msel("Ciudad",         "Ciudad",         "f_Ciudad")
-        provincias = msel("Provincia",      "Provincia",      "f_Provincia")
+        años = msel("Año", "Año", "f_año")
 
         st.markdown("---")
+
+        # ── Bloque: Ubicación ─────────────────────────────
+        st.markdown('<div class="sidebar-block-title">Ubicación</div>', unsafe_allow_html=True)
+        mercados   = msel("Mercado",        "Mercado",        "f_Mercado")
+        provincias = msel("Provincia",      "Provincia",      "f_Provincia")
+        ciudades   = msel("Ciudad",         "Ciudad",         "f_Ciudad")
+        dealers    = msel("Concesionario",  "Concesionario",  "f_Concesionario")
+
+        st.markdown("---")
+
+        # ── Bloque: Precio y financiación ─────────────────
+        st.markdown('<div class="sidebar-block-title">Precio y financiación</div>', unsafe_allow_html=True)
 
         # Slider PVP
         pvp_s = df["PVP"].dropna() if "PVP" in df.columns else pd.Series(dtype=float)
@@ -898,11 +1390,8 @@ def sidebar_filters(df):
         else:
             cuota_r = (0, 99999)
 
-        st.markdown("---")
         solo_pvp   = st.checkbox("Solo con precio informado",       False, key="f_solo_pvp")
         solo_cuota = st.checkbox("Solo con cuota mensual informada", False, key="f_solo_cuota")
-
-        años = msel("Año", "Año", "f_año")
 
     # Aplicar
     mask = pd.Series(True, index=df.index)
@@ -934,10 +1423,12 @@ def sidebar_filters(df):
 # ─────────────────────────────────────────────────────────────
 # KPIs
 # ─────────────────────────────────────────────────────────────
-def kpi(label, value, sub=""):
-    sub_html = f'<div class="kpi-sub">{sub}</div>' if sub else ""
+def kpi(label, value, sub="", icon_name="chart", sub_class=""):
+    cls = f"kpi-sub {sub_class}".strip()
+    sub_html = f'<div class="{cls}">{sub}</div>' if sub else ""
     return (
         f'<div class="kpi-wrap">'
+        f'<div class="kpi-icon">{icon(icon_name)}</div>'
         f'<div class="kpi-label">{label}</div>'
         f'<div class="kpi-value">{value}</div>'
         f'{sub_html}</div>'
@@ -999,38 +1490,38 @@ def show_kpis(df):
 
     row1 = st.columns(4)
     datos_r1 = [
-        ("Total vehículos",   eu_num(total),              "en stock"),
-        ("Con precio",        eu_num(n_pvp),              pct(n_pvp, total)),
-        ("Con cuota/mes",     eu_num(n_cuota),            pct(n_cuota, total)),
-        ("Precio medio",      eur(pvp_s.mean()),          f"Mín. {eur(pvp_s.min())} · Máx. {eur(pvp_s.max())}"),
+        ("Total vehículos",   eu_num(total),              "en stock", "car"),
+        ("Con precio",        eu_num(n_pvp),              pct(n_pvp, total), "tag"),
+        ("Con cuota/mes",     eu_num(n_cuota),            pct(n_cuota, total), "card"),
+        ("Precio medio",      eur(pvp_s.mean()),          f"Mín. {eur(pvp_s.min())} · Máx. {eur(pvp_s.max())}", "tag"),
     ]
-    for col, (l, v, s) in zip(row1, datos_r1):
-        col.markdown(kpi(l, v, s), unsafe_allow_html=True)
+    for col, (l, v, s, ic) in zip(row1, datos_r1):
+        col.markdown(kpi(l, v, s, icon_name=ic), unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
 
     row2 = st.columns(4)
     datos_r2 = [
         ("Cuota media",       eu_mes(cuota_s.mean()) if len(cuota_s) else "—",
-         f"Mín. {eur(cuota_s.min())} · Máx. {eur(cuota_s.max())}" if len(cuota_s) else ""),
-        ("Marcas",            str(df["Marca"].nunique()),  "analizadas"),
-        ("Modelos",           str(n_mods),                 "distintos"),
-        ("Concesionarios",    str(n_deal),                 "analizados"),
+         f"Mín. {eur(cuota_s.min())} · Máx. {eur(cuota_s.max())}" if len(cuota_s) else "", "card"),
+        ("Marcas",            str(df["Marca"].nunique()),  "analizadas", "car"),
+        ("Modelos",           str(n_mods),                 "distintos", "car"),
+        ("Concesionarios",    str(n_deal),                 "analizados", "building"),
     ]
-    for col, (l, v, s) in zip(row2, datos_r2):
-        col.markdown(kpi(l, v, s), unsafe_allow_html=True)
+    for col, (l, v, s, ic) in zip(row2, datos_r2):
+        col.markdown(kpi(l, v, s, icon_name=ic), unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
 
     row3 = st.columns(4)
     datos_r3 = [
-        ("Modelo top stock",  str(top_modelo)[:26],        "más unidades"),
-        ("Ciudad con más stock", str(top_ciudad),          ""),
-        ("Dealer principal",  str(top_dealer)[:24],        ""),
-        ("TAE media",         pct_val(tae_s.mean(), 2) if len(tae_s) else "—", "sobre financiados"),
+        ("Modelo top stock",  str(top_modelo)[:26],        "más unidades", "trophy"),
+        ("Ciudad con más stock", str(top_ciudad),          "", "pin"),
+        ("Dealer principal",  str(top_dealer)[:24],        "", "building"),
+        ("TAE media",         pct_val(tae_s.mean(), 2) if len(tae_s) else "—", "sobre financiados", "percent"),
     ]
-    for col, (l, v, s) in zip(row3, datos_r3):
-        col.markdown(kpi(l, v, s), unsafe_allow_html=True)
+    for col, (l, v, s, ic) in zip(row3, datos_r3):
+        col.markdown(kpi(l, v, s, icon_name=ic), unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────────────────────
 # CHARTS — STOCK
@@ -1040,75 +1531,71 @@ def charts_stock(df):
 
     with c1:
         gb = df.groupby("Marca").size().reset_index(name="N").sort_values("N", ascending=False)
-        fig = px.bar(gb, x="Marca", y="N", color="Marca",
-                     color_discrete_map=COLORS, text="N",
-                     title="Stock por marca",
-                     labels={"N": "Vehículos", "Marca": ""})
-        fig.update_traces(textposition="outside", textfont_size=11)
-        fig.update_layout(showlegend=False)
-        st.plotly_chart(fig_base(fig), width="stretch")
+        render_ranking(
+            "Stock por marca",
+            list(zip(gb["Marca"], gb["N"])),
+            fmt=lambda v: eu_num(int(v)),
+            colors=COLORS,
+            show_logos=True,
+        )
 
     with c2:
         gb2 = df.groupby("Fuel_type").size().reset_index(name="N").sort_values("N", ascending=False)
-        fig2 = px.pie(gb2, names="Fuel_type", values="N",
-                      color="Fuel_type", color_discrete_map=FUEL_COLORS,
-                      title="Distribución por combustible", hole=0.5)
-        fig2.update_traces(textinfo="percent+label", textfont_size=11)
-        st.plotly_chart(fig_base(fig2), width="stretch")
+        render_donut(
+            "Distribución por combustible",
+            list(zip(gb2["Fuel_type"], gb2["N"])),
+            colors=FUEL_COLORS,
+        )
 
     c3, c4 = st.columns(2)
 
     with c3:
         all_m = df.groupby("Modelo_norm").size().reset_index(name="N").sort_values("N", ascending=False)
-        fig3 = px.bar(all_m.head(10), y="Modelo_norm", x="N", orientation="h",
-                      title="Top 10 modelos por unidades",
-                      labels={"N": "Unidades", "Modelo_norm": ""},
-                      color="N", color_continuous_scale=["#cbd5e1", "#0f172a"])
-        fig3.update_layout(coloraxis_showscale=False,
-                           yaxis=dict(autorange="reversed", tickfont_size=10))
-        st.plotly_chart(fig_base(fig3, 340), width="stretch")
+        model_brand = model_brand_map(df)
+        top10 = all_m.head(10)
+        render_ranking(
+            "Top 10 modelos por unidades",
+            list(zip(top10["Modelo_norm"], top10["N"])),
+            fmt=lambda v: eu_num(int(v)),
+            row_brands=[model_brand.get(m) for m in top10["Modelo_norm"]],
+        )
         with st.expander("Ver todos los modelos"):
             st.dataframe(all_m.reset_index(drop=True), width="stretch", height=280, hide_index=True)
 
     with c4:
         all_d = df.groupby("Concesionario").size().reset_index(name="N").sort_values("N", ascending=False)
-        fig4 = px.bar(all_d.head(10), y="Concesionario", x="N", orientation="h",
-                      title="Top 10 concesionarios",
-                      labels={"N": "Unidades", "Concesionario": ""},
-                      color="N", color_continuous_scale=["#cbd5e1", "#0f172a"])
-        fig4.update_layout(coloraxis_showscale=False,
-                           yaxis=dict(autorange="reversed", tickfont_size=10))
-        st.plotly_chart(fig_base(fig4, 340), width="stretch")
+        render_ranking(
+            "Top 10 concesionarios",
+            list(zip(all_d.head(10)["Concesionario"], all_d.head(10)["N"])),
+            fmt=lambda v: eu_num(int(v)),
+        )
         with st.expander("Ver todos los concesionarios"):
             st.dataframe(all_d.reset_index(drop=True), width="stretch", height=280, hide_index=True)
 
     if "Ciudad" in df.columns and df["Ciudad"].notna().any():
         top_c = df.groupby("Ciudad").size().reset_index(name="N").sort_values("N", ascending=False).head(20)
-        fig5 = px.bar(top_c, x="Ciudad", y="N",
-                      title="Top 20 ciudades por stock",
-                      color="N", color_continuous_scale=["#cbd5e1", "#0f172a"],
-                      labels={"N": "Unidades", "Ciudad": ""})
-        fig5.update_layout(coloraxis_showscale=False, xaxis_tickangle=-35)
-        st.plotly_chart(fig_base(fig5, 300), width="stretch")
+        render_ranking(
+            "Top 20 ciudades por stock",
+            list(zip(top_c["Ciudad"], top_c["N"])),
+            fmt=lambda v: eu_num(int(v)),
+        )
 
     if "Carrocería" in df.columns and df["Carrocería"].notna().any():
         c5, c6 = st.columns(2)
         with c5:
             gb_c = df.groupby("Carrocería").size().reset_index(name="N").sort_values("N", ascending=False)
-            fig6 = px.bar(gb_c, x="Carrocería", y="N",
-                          title="Stock por tipo de carrocería",
-                          labels={"N": "Unidades", "Carrocería": ""},
-                          color="Carrocería")
-            fig6.update_layout(showlegend=False)
-            st.plotly_chart(fig_base(fig6, 280), width="stretch")
+            render_ranking(
+                "Stock por tipo de carrocería",
+                list(zip(gb_c["Carrocería"], gb_c["N"])),
+                fmt=lambda v: eu_num(int(v)),
+            )
 
         with c6:
             gb_m = df.groupby("Mercado").size().reset_index(name="N")
-            fig7 = px.pie(gb_m, names="Mercado", values="N",
-                          title="Stock por mercado", hole=0.5,
-                          color_discrete_sequence=["#1c69d4","#0f172a"])
-            fig7.update_traces(textinfo="percent+label")
-            st.plotly_chart(fig_base(fig7, 280), width="stretch")
+            render_donut(
+                "Stock por mercado",
+                list(zip(gb_m["Mercado"], gb_m["N"])),
+            )
 
     if "Fecha Publicacion" in df.columns:
         recent = df.copy()
@@ -1147,36 +1634,21 @@ def charts_precios(df):
     c1, c2 = st.columns(2)
 
     with c1:
-        gb = df_pvp.groupby("Marca")["PVP"].agg(["mean","min","max"]).reset_index()
-        fig = go.Figure()
-        for _, r in gb.iterrows():
-            c = COLORS.get(r["Marca"], "#1c69d4")
-            fig.add_trace(go.Bar(
-                name=r["Marca"], x=[r["Marca"]],
-                y=[r["mean"]], marker_color=c,
-                error_y=dict(type="data", symmetric=False,
-                             array=[r["max"] - r["mean"]],
-                             arrayminus=[r["mean"] - r["min"]]),
-                text=[eur(r["mean"])], textposition="outside",
-            ))
-        fig.update_layout(
-            title="Precio medio por marca (con rango)",
-            showlegend=False, yaxis_title="€",
-            template=TPL, height=310,
-            margin=dict(l=8,r=8,t=36,b=8),
-            font=dict(family="Inter", size=11),
-            paper_bgcolor="white", plot_bgcolor="white",
-            separators=",.",
+        gb = df_pvp.groupby("Marca")["PVP"].agg(["mean","min","max"]).reset_index().sort_values("mean", ascending=False)
+        render_ranking(
+            "Precio medio por marca",
+            list(zip(gb["Marca"], gb["mean"])),
+            fmt=lambda v: eur(v),
+            colors=COLORS,
+            show_logos=True,
         )
-        st.plotly_chart(fig, width="stretch")
 
     with c2:
         fig2 = px.histogram(df_pvp, x="PVP", color="Marca",
                             color_discrete_map=COLORS, nbins=50,
-                            title="Distribución de precios",
                             labels={"PVP":"Precio (€)","count":"Vehículos"},
                             barmode="overlay", opacity=0.72)
-        st.plotly_chart(fig_base(fig2), width="stretch")
+        plotly_card(fig_base(fig2), "Distribución de precios")
 
     c3, c4 = st.columns(2)
 
@@ -1185,30 +1657,30 @@ def charts_precios(df):
                .agg(["mean","count"]).reset_index()
                .query("count >= 3")
                .sort_values("mean", ascending=False).head(15))
-        fig3 = px.bar(grp, y="Modelo_norm", x="mean", orientation="h",
-                      title="Precio medio — top 15 modelos (≥3 uds.)",
-                      labels={"mean":"Precio medio (€)","Modelo_norm":""},
-                      color="mean", color_continuous_scale=["#cbd5e1","#0f172a"],
-                      text=grp["mean"].map(eur))
-        fig3.update_traces(textposition="outside", textfont_size=10)
-        fig3.update_layout(coloraxis_showscale=False, yaxis=dict(autorange="reversed", tickfont_size=10))
-        st.plotly_chart(fig_base(fig3, 400), width="stretch")
+        model_brand = model_brand_map(df_pvp)
+        render_ranking(
+            "Precio medio — top 15 modelos (≥3 uds.)",
+            list(zip(grp["Modelo_norm"], grp["mean"])),
+            fmt=lambda v: eur(v),
+            row_brands=[model_brand.get(m) for m in grp["Modelo_norm"]],
+            empty_msg="No hay suficientes unidades por modelo con los filtros actuales.",
+        )
 
     with c4:
         fig4 = px.box(df_pvp, x="Marca", y="PVP", color="Marca",
                       color_discrete_map=COLORS,
-                      title="Dispersión de precios por marca",
                       labels={"PVP":"Precio (€)"})
         fig4.update_layout(showlegend=False)
-        st.plotly_chart(fig_base(fig4), width="stretch")
+        plotly_card(fig_base(fig4), "Dispersión de precios por marca")
 
     if "Fuel_type" in df_pvp.columns:
-        gb_f = df_pvp.groupby(["Fuel_type","Marca"])["PVP"].mean().reset_index()
-        fig5 = px.bar(gb_f, x="Fuel_type", y="PVP", color="Marca",
-                      barmode="group", color_discrete_map=COLORS,
-                      title="Precio medio por combustible y marca",
-                      labels={"PVP":"Precio medio (€)","Fuel_type":"Combustible"})
-        st.plotly_chart(fig_base(fig5, 300), width="stretch")
+        gb_f = df_pvp.groupby(["Fuel_type","Marca"])["PVP"].mean().reset_index().sort_values("PVP", ascending=False)
+        render_ranking(
+            "Precio medio por combustible y marca",
+            list(zip(gb_f["Fuel_type"] + " — " + gb_f["Marca"], gb_f["PVP"])),
+            fmt=lambda v: eur(v),
+            colors=COLORS,
+        )
 
 # ─────────────────────────────────────────────────────────────
 # CHARTS — CUOTAS
@@ -1222,23 +1694,21 @@ def charts_cuotas(df):
     c1, c2 = st.columns(2)
 
     with c1:
-        gb = df_c.groupby("Marca")["Cuota_mes"].mean().reset_index().sort_values("Cuota_mes")
-        fig = px.bar(gb, x="Marca", y="Cuota_mes", color="Marca",
-                     color_discrete_map=COLORS,
-                     title="Cuota mensual media por marca",
-                     text=gb["Cuota_mes"].map(eu_mes),
-                     labels={"Cuota_mes":"€/mes"})
-        fig.update_traces(textposition="outside")
-        fig.update_layout(showlegend=False)
-        st.plotly_chart(fig_base(fig), width="stretch")
+        gb = df_c.groupby("Marca")["Cuota_mes"].mean().reset_index().sort_values("Cuota_mes", ascending=False)
+        render_ranking(
+            "Cuota mensual media por marca",
+            list(zip(gb["Marca"], gb["Cuota_mes"])),
+            fmt=lambda v: eu_mes(v),
+            colors=COLORS,
+            show_logos=True,
+        )
 
     with c2:
         fig2 = px.histogram(df_c, x="Cuota_mes", color="Marca",
                             color_discrete_map=COLORS, nbins=40,
-                            title="Distribución de cuotas mensuales",
                             labels={"Cuota_mes":"Cuota (€/mes)"},
                             barmode="overlay", opacity=0.72)
-        st.plotly_chart(fig_base(fig2), width="stretch")
+        plotly_card(fig_base(fig2), "Distribución de cuotas mensuales")
 
     c3, c4 = st.columns(2)
 
@@ -1246,37 +1716,35 @@ def charts_cuotas(df):
         grp = (df_c.groupby("Modelo_norm")["Cuota_mes"]
                .agg(["mean","count"]).reset_index()
                .query("count >= 3").sort_values("mean").head(15))
-        fig3 = px.bar(grp, y="Modelo_norm", x="mean", orientation="h",
-                      title="Cuota media más baja — top 15 modelos",
-                      labels={"mean":"€/mes","Modelo_norm":""},
-                      color="mean", color_continuous_scale=["#0f172a","#cbd5e1"],
-                      text=grp["mean"].map(eur))
-        fig3.update_traces(textposition="outside", textfont_size=10)
-        fig3.update_layout(coloraxis_showscale=False, yaxis=dict(tickfont_size=10))
-        st.plotly_chart(fig_base(fig3, 380), width="stretch")
+        model_brand = model_brand_map(df_c)
+        render_ranking(
+            "Cuota media más baja — top 15 modelos",
+            list(zip(grp["Modelo_norm"], grp["mean"])),
+            fmt=lambda v: eu_mes(v),
+            row_brands=[model_brand.get(m) for m in grp["Modelo_norm"]],
+            empty_msg="No hay suficientes unidades por modelo con los filtros actuales.",
+        )
 
     with c4:
         df_both = df[(df["PVP"].notna()) & (df["Cuota_mes"].notna())].copy() if "PVP" in df.columns else pd.DataFrame()
         if not df_both.empty:
             fig4 = px.scatter(df_both, x="PVP", y="Cuota_mes", color="Marca",
                               color_discrete_map=COLORS, opacity=0.55,
-                              title="Precio total vs cuota mensual",
                               labels={"PVP":"Precio (€)","Cuota_mes":"Cuota (€/mes)"},
                               hover_data=["Modelo_norm"])
-            st.plotly_chart(fig_base(fig4), width="stretch")
+            plotly_card(fig_base(fig4), "Precio total vs cuota mensual")
 
     if "TAE" in df_c.columns and df_c["TAE"].notna().any():
         c5, _ = st.columns(2)
         with c5:
-            gb_t = df_c.groupby("Marca")["TAE"].mean().reset_index()
-            fig5 = px.bar(gb_t, x="Marca", y="TAE", color="Marca",
-                          color_discrete_map=COLORS,
-                          title="TAE media por marca (%)",
-                          text=gb_t["TAE"].map(lambda x: pct_val(x, 2)),
-                          labels={"TAE":"TAE (%)"})
-            fig5.update_traces(textposition="outside")
-            fig5.update_layout(showlegend=False)
-            st.plotly_chart(fig_base(fig5, 280), width="stretch")
+            gb_t = df_c.groupby("Marca")["TAE"].mean().reset_index().sort_values("TAE", ascending=False)
+            render_ranking(
+                "TAE media por marca",
+                list(zip(gb_t["Marca"], gb_t["TAE"])),
+                fmt=lambda v: pct_val(v, 2),
+                colors=COLORS,
+                show_logos=True,
+            )
 
 # ─────────────────────────────────────────────────────────────
 # COMPARADOR DE MODELOS
@@ -1326,7 +1794,23 @@ def comparador(df):
         })
 
     comp = pd.DataFrame(rows).set_index("Modelo")
-    st.dataframe(comp.T.astype(str), width="stretch")
+    model_brand_h = model_brand_map(df)
+    th_html = ['<th></th>']
+    for m in comp.index:
+        b64 = _BRAND_LOGOS.get(model_brand_h.get(m))
+        logo_html = f'<img class="rank-logo" src="data:image/png;base64,{b64}" />' if b64 else ""
+        th_html.append(f'<th>{logo_html}<span>{m}</span></th>')
+    rows_html = []
+    for idx_name, row_vals in comp.T.iterrows():
+        tds = "".join(f"<td>{v}</td>" for v in row_vals.astype(str))
+        rows_html.append(f"<tr><td class='comp-row-label'>{idx_name}</td>{tds}</tr>")
+    st.markdown(
+        '<div class="chart-card comp-table-wrap"><table class="comp-table">'
+        f'<thead><tr>{"".join(th_html)}</tr></thead>'
+        f'<tbody>{"".join(rows_html)}</tbody>'
+        '</table></div>',
+        unsafe_allow_html=True,
+    )
 
     raw = []
     for m in sel:
@@ -1338,28 +1822,27 @@ def comparador(df):
         })
     raw_df = pd.DataFrame(raw)
 
+    model_brand = model_brand_map(df)
     c1, c2 = st.columns(2)
     with c1:
         d = raw_df.dropna(subset=["Precio medio"])
-        if not d.empty:
-            fig = px.bar(d, x="Modelo", y="Precio medio", color="Modelo",
-                         title="Precio medio por modelo",
-                         text=d["Precio medio"].map(eur),
-                         labels={"Precio medio":"€"})
-            fig.update_traces(textposition="outside")
-            fig.update_layout(showlegend=False)
-            st.plotly_chart(fig_base(fig), width="stretch")
+        render_ranking(
+            "Precio medio por modelo",
+            list(zip(d["Modelo"], d["Precio medio"])),
+            fmt=lambda v: eur(v),
+            row_brands=[model_brand.get(m) for m in d["Modelo"]],
+            show_logos=True,
+        )
 
     with c2:
         d2 = raw_df.dropna(subset=["Cuota media"])
-        if not d2.empty:
-            fig2 = px.bar(d2, x="Modelo", y="Cuota media", color="Modelo",
-                          title="Cuota mensual media por modelo",
-                          text=d2["Cuota media"].map(eu_mes),
-                          labels={"Cuota media":"€/mes"})
-            fig2.update_traces(textposition="outside")
-            fig2.update_layout(showlegend=False)
-            st.plotly_chart(fig_base(fig2), width="stretch")
+        render_ranking(
+            "Cuota mensual media por modelo",
+            list(zip(d2["Modelo"], d2["Cuota media"])),
+            fmt=lambda v: eu_mes(v),
+            row_brands=[model_brand.get(m) for m in d2["Modelo"]],
+            show_logos=True,
+        )
 
     # Insight comparativo
     d_pvp = raw_df.dropna(subset=["Precio medio"])
@@ -2000,7 +2483,7 @@ def show_chatbot(df):
     ]
     cols = st.columns(len(sugs))
     for col, sug in zip(cols, sugs):
-        if col.button(sug, key=f"sug_{sug[:12]}", width="stretch"):
+        if col.button(sug,key=f"sug_{sug[:12]}", width="stretch"):
             st.session_state.chat_msgs.append({"role": "user", "text": sug})
             resp = _llm_responder(sug, df)
             st.session_state.chat_msgs.append({"role": "bot", "text": resp})
@@ -2015,14 +2498,15 @@ def show_chatbot(df):
 # MAIN
 # ─────────────────────────────────────────────────────────────
 def main():
-    show_header()
-    df_raw = load_data()
-
     csv_path = BASE / "STOCK_UNIFICADO_GLOBAL.csv"
     updated = (
         datetime.fromtimestamp(csv_path.stat().st_mtime).strftime("%d/%m/%Y %H:%M")
         if csv_path.exists() else "—"
     )
+    show_header(updated)
+    with st.spinner("Cargando datos del stock..."):
+        df_raw = load_data()
+
     st.markdown(
         f'<div class="status-bar"><span class="status-dot"></span>'
         f'<span>SISTEMA EN VIVO</span><span class="sep">·</span>'

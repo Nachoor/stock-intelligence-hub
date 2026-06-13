@@ -584,18 +584,56 @@ def enrich_from_master(df: pd.DataFrame) -> pd.DataFrame:
 
 _PLACEHOLDER_VERSION_RE = re.compile(r"^\d+(\.\d+)?$")
 
+_FUEL_ENGINE_TAG = {
+    "diesel": "TDI", "diésel": "TDI", "gasolina": "TFSI",
+    "eléctrico": "e-tron", "electrico": "e-tron", "electric": "e-tron",
+}
+
 
 def _derive_version(row: pd.Series, brand_norm: str, raw_version: str) -> str:
     """Some Audi ES rows have meaningless numeric placeholders ("1", "2", "0")
-    in the Versión column. The real descriptor (trim + engine + body) lives in
-    the Modelo column instead, e.g. "Audi A1 Sportback Advanced 30 TFSI 85 kW
-    (116 CV) 6 vel." -> "A1 Sportback Advanced 30 TFSI 85 kW (116 CV) 6 vel."
+    or empty values in the Versión column. The real descriptor (trim + engine +
+    body) lives in the Modelo column instead, e.g. "Audi A1 Sportback Advanced
+    30 TFSI 85 kW (116 CV) 6 vel." -> "A1 Sportback Advanced 30 TFSI 85 kW
+    (116 CV) 6 vel."
+
+    Some carlines (p.ej. Audi Q3 Sportback) no traen ni placeholder numérico ni
+    descriptor en Modelo: en ese caso construimos la versión con los datos
+    mecánicos disponibles (combustible + potencia + cambio).
     """
-    if brand_norm != "Audi" or not _PLACEHOLDER_VERSION_RE.match(str(raw_version).strip()):
+    if brand_norm != "Audi":
         return raw_version
+
+    raw_clean = str(raw_version).strip()
+    is_placeholder = bool(_PLACEHOLDER_VERSION_RE.match(raw_clean))
+    is_empty = raw_clean == "" or raw_clean.lower() == "nan"
+    if not is_placeholder and not is_empty:
+        return raw_version
+
     modelo = clean_text(first(row, "Modelo", "Model"))
-    modelo = re.sub(r"^audi\s+", "", modelo, flags=re.IGNORECASE)
-    return modelo or raw_version
+    modelo_sin_marca = re.sub(r"^audi\s+", "", modelo, flags=re.IGNORECASE)
+
+    if is_placeholder and modelo_sin_marca:
+        return modelo_sin_marca
+
+    # Sin placeholder ni descriptor en Modelo: construir a partir de
+    # carline + combustible + potencia + cambio.
+    carline = clean_text(first(row, "Carline", "Modelo", "Model"))
+    carline = re.sub(r"^audi\s+", "", carline, flags=re.IGNORECASE)
+    combustible = clean_text(first(row, "Combustible", "Fuel_Type", "Fuel"))
+    engine_tag = _FUEL_ENGINE_TAG.get(combustible.lower(), combustible)
+    potencia = clean_text(first(row, "Potencia", "Power"))
+    cambio = clean_text(first(row, "Cambio", "Gear", "Gearbox"))
+
+    parts = [carline or modelo_sin_marca]
+    if engine_tag:
+        parts.append(engine_tag)
+    if potencia:
+        parts.append(potencia)
+    if cambio:
+        parts.append(cambio)
+    built = " ".join(p for p in parts if p).strip()
+    return built or raw_version
 
 
 def normalize_rows(path: Path, brand: str, market: str) -> list[dict]:
@@ -664,6 +702,7 @@ def deduplicate_stock(df: pd.DataFrame) -> pd.DataFrame:
     duplicate_url = has_url & df.duplicated(["Market", "Brand", "URL"], keep="first")
     duplicate_exact_no_url = ~has_url & df.duplicated(keep="first")
     duplicate_mask = duplicate_url | duplicate_exact_no_url
+
     removed = int(duplicate_mask.sum())
     if removed:
         print(f"Removed {removed} duplicate stock rows by Market+Brand+URL")
